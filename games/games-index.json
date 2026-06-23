@@ -78,5 +78,13 @@
     "color": "#4caf50",
     "path": "games/leaf-game",
     "tags": ["休闲", "自然"]
+  },
+  {
+    "name": "Scratch 抽奖",
+    "description": "刮刮乐抽奖小游戏，看看你的运气如何",
+    "icon": "🍀",
+    "color": "#ffd700",
+    "path": "games/scratch-luck",
+    "tags": ["抽奖", "休闲"]
   }
 ]
