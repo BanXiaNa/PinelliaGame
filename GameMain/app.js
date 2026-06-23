@@ -2,14 +2,31 @@
  * PinelliaGame - 游戏大厅主逻辑
  *
  * 工作流程：
- *   1. 页面加载后，从 games/games-index.json 获取游戏清单
- *   2. 根据返回数据渲染游戏卡片网格
- *   3. 点击卡片跳转到对应游戏页面
+ *   1. 自动计算资源根路径（支持独立运行和子模块部署）
+ *   2. 从 games/games-index.json 获取游戏清单
+ *   3. 根据返回数据渲染游戏卡片网格
+ *   4. 点击卡片跳转到对应游戏页面
  *
  * 状态管理：loading → (success → render grid) | (error → show error) | (empty → show empty)
  */
 
-const INDEX_URL = 'games/games-index.json';
+/**
+ * 计算资源根路径
+ * GameMain 始终位于游戏库的 GameMain/ 目录下，
+ * 游戏数据（games/）是其兄弟目录。
+ * 无论是独立运行还是作为子模块嵌套，只需退一级即可。
+ */
+const BASE = (() => {
+  const path = window.location.pathname;
+  // 找到 GameMain/ 的位置，取它前面的部分作为 base
+  const idx = path.lastIndexOf('/GameMain/');
+  if (idx !== -1) {
+    return path.slice(0, idx + 1); // 指向 GameMain/ 的父级
+  }
+  return './';
+})();
+
+const INDEX_URL = `${BASE}games/games-index.json`;
 
 // DOM 元素缓存
 const $ = (id) => document.getElementById(id);
@@ -44,7 +61,7 @@ async function loadGames() {
   } catch (err) {
     // 区分「文件不存在」和其他错误
     if (err.message.includes('404') || err.message.includes('无法读取')) {
-      throw new Error('未找到游戏索引 (games/games-index.json)');
+      throw new Error(`未找到游戏索引 (${INDEX_URL})`);
     }
     throw err;
   }
@@ -100,7 +117,7 @@ function createCard(game) {
   // 点击跳转
   card.addEventListener('click', () => {
     const path = game.path || `games/${game.name}`;
-    window.location.href = `${path}/index.html`;
+    window.location.href = `${BASE}${path}/index.html`;
   });
 
   return card;
