@@ -54,5 +54,13 @@
     "color": "#4caf50",
     "path": "games/search-strike",
     "tags": ["战术", "动作"]
+  },
+  {
+    "name": "贪吃蛇小游戏",
+    "description": "经典贪吃蛇游戏，控制小蛇吃食物不断变长",
+    "icon": "🐍",
+    "color": "#00bcd4",
+    "path": "games/snake-game",
+    "tags": ["经典", "休闲"]
   }
 ]
