@@ -70,5 +70,13 @@
     "color": "#795548",
     "path": "games/hunter-bird",
     "tags": ["射击", "狩猎"]
+  },
+  {
+    "name": "Leaf 树叶游戏",
+    "description": "树叶主题的休闲互动小游戏",
+    "icon": "🍃",
+    "color": "#4caf50",
+    "path": "games/leaf-game",
+    "tags": ["休闲", "自然"]
   }
 ]
