@@ -62,5 +62,13 @@
     "color": "#00bcd4",
     "path": "games/snake-game",
     "tags": ["经典", "休闲"]
+  },
+  {
+    "name": "猎鸟 Hunter Bird",
+    "description": "瞄准射击飞鸟的狩猎小游戏",
+    "icon": "🦅",
+    "color": "#795548",
+    "path": "games/hunter-bird",
+    "tags": ["射击", "狩猎"]
   }
 ]
