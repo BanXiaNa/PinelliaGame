@@ -30,5 +30,13 @@
     "color": "#8b0000",
     "path": "games/zombie-apocalypse",
     "tags": ["生存", "射击"]
+  },
+  {
+    "name": "Scratch 刮刮乐",
+    "description": "在线刮刮乐抽奖游戏，试试你的手气",
+    "icon": "🎫",
+    "color": "#ff9800",
+    "path": "games/scratch-card",
+    "tags": ["抽奖", "休闲"]
   }
 ]

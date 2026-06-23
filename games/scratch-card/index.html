@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎰 刮刮乐商店</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+  color: #fff;
+  overflow-x: hidden;
+}
+
+/* === 顶部状态栏 === */
+.status-bar {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 15px 20px;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(10px);
+  flex-wrap: wrap;
+}
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+.stat .icon { font-size: 20px; }
+.stat .value { font-weight: bold; color: #ffd700; }
+
+/* === 主内容 === */
+.main {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* === 标题 === */
+.title {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.title h1 {
+  font-size: 28px;
+  background: linear-gradient(45deg, #ffd700, #ff6b6b, #ffd700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* === 刮刮乐卡片 === */
+.card-area {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  height: 220px;
+  margin: 0 auto 20px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.card-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  background: linear-gradient(135deg, #2d1b69, #11998e);
+}
+.card-bg .prize-text {
+  font-size: 18px;
+  margin-top: 10px;
+  font-weight: bold;
+  color: #ffd700;
+}
+#scratchCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  border-radius: 16px;
+}
+.card-info {
+  text-align: center;
+  margin-bottom: 15px;
+}
+.card-tier {
+  display: inline-block;
+  padding: 4px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: bold;
+}
+.tier-common { background: #6b7280; }
+.tier-rare { background: #3b82f6; }
+.tier-epic { background: #8b5cf6; }
+.tier-legend { background: linear-gradient(45deg, #f59e0b, #ef4444); }
+
+/* === 按钮区域 === */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:active { transform: translateY(0); }
+.btn-primary {
+  background: linear-gradient(135deg, #ffd700, #f59e0b);
+  color: #1a1a2e;
+}
+.btn-shop {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  color: #fff;
+}
+.btn-upgrade {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+.btn-reset {
+  background: rgba(255,255,255,0.1);
+  color: #aaa;
+  font-size: 12px;
+  padding: 8px 16px;
+}
+
+/* === 模态框 === */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: #1e293b;
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 22px;
+}
+.modal-close {
+  float: right;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 24px;
+  cursor: pointer;
+}
+.modal-close:hover { color: #fff; }
+
+/* === 商店物品 === */
+.shop-item, .upgrade-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.05);
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  transition: background 0.2s;
+}
+.shop-item:hover, .upgrade-item:hover {
+  background: rgba(255,255,255,0.1);
+}
+.item-info {
+  flex: 1;
+}
+.item-name {
+  font-weight: bold;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+.item-desc {
+  font-size: 12px;
+  color: #94a3b8;
+}
+.item-price {
+  background: rgba(255,215,0,0.2);
+  color: #ffd700;
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-weight: bold;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+.item-price:hover {
+  background: rgba(255,215,0,0.3);
+}
+.item-price:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.item-level {
+  font-size: 11px;
+  color: #10b981;
+  margin-top: 2px;
+}
+
+/* === 动画 === */
+@keyframes coinPop {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-60px) scale(1.5); opacity: 0; }
+}
+.coin-pop {
+  position: fixed;
+  font-size: 24px;
+  pointer-events: none;
+  z-index: 200;
+  animation: coinPop 1s ease-out forwards;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.shake { animation: shake 0.3s ease; }
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.3); }
+  50% { box-shadow: 0 0 40px rgba(255,215,0,0.6); }
+}
+.glow { animation: glow 1.5s ease infinite; }
+
+/* === 消息提示 === */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  z-index: 300;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* === 历史记录 === */
+.history {
+  margin-top: 20px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 12px;
+  padding: 16px;
+}
+.history h3 {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+.history-list {
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+.history-item {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.win { color: #10b981; }
+.lose { color: #ef4444; }
+</style>
+</head>
+<body>
+
+<!-- 状态栏 -->
+<div class="status-bar">
+  <div class="stat">
+    <span class="icon">💰</span>
+    <span>金币：</span>
+    <span class="value" id="coins">0</span>
+  </div>
+  <div class="stat">
+    <span class="icon">🍀</span>
+    <span>幸运：</span>
+    <span class="value" id="luck">0</span>
+  </div>
+  <div class="stat">
+    <span class="icon">⏳</span>
+    <span>收入：</span>
+    <span class="value" id="income">0/秒</span>
+  </div>
+</div>
+
+<!-- 主内容 -->
+<div class="main">
+  <div class="title">
+    <h1>🎰 刮刮乐商店 🏪</h1>
+  </div>
+
+  <!-- 卡片等级 -->
+  <div class="card-info">
+    <span class="card-tier" id="cardTier">普通刮刮乐</span>
+  </div>
+
+  <!-- 刮刮乐区域 -->
+  <div class="card-area" id="cardArea">
+    <div class="card-bg" id="cardBg">
+      <span id="prizeEmoji">🎁</span>
+      <span class="prize-text" id="prizeText">刮开查看</span>
+    </div>
+    <canvas id="scratchCanvas"></canvas>
+  </div>
+
+  <!-- 按钮 -->
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="buyCard()">🎫 购买刮刮乐</button>
+    <button class="btn btn-shop" onclick="openShop()">🏪 商店</button>
+    <button class="btn btn-upgrade" onclick="openUpgrade()">⬆️ 升级</button>
+  </div>
+
+  <!-- 历史记录 -->
+  <div class="history">
+    <h3>📋 中奖记录</h3>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+  <div style="text-align:center; margin-top:15px;">
+    <button class="btn btn-reset" onclick="resetGame()">🔄 重置游戏</button>
+  </div>
+</div>
+
+<!-- 商店弹窗 -->
+<div class="modal-overlay" id="shopModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeShop()">&times;</button>
+    <h2>🏪 刮刮乐商店</h2>
+    <div id="shopList"></div>
+  </div>
+</div>
+
+<!-- 升级弹窗 -->
+<div class="modal-overlay" id="upgradeModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeUpgrade()">&times;</button>
+    <h2>⬆️ 能力升级</h2>
+    <div id="upgradeList"></div>
+  </div>
+</div>
+
+<!-- 提示 -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== 游戏数据 ====================
+const DEFAULT_STATE = {
+  coins: 50,
+  luck: 0,
+  income: 0,
+  currentTier: 0,
+  upgrades: { luck: 0, income: 0, scratch: 0 },
+  history: []
+};
+
+let state = loadState();
+let scratching = false;
+let scratched = false;
+let currentPrize = null;
+
+// 卡片等级配置
+const TIERS = [
+  { name: '普通刮刮乐', cls: 'tier-common', cost: 10, color: '#6b7280',
+    prizes: [
+      { emoji: '🍎', name: '苹果', value: 5, weight: 30 },
+      { emoji: '🍊', name: '橙子', value: 8, weight: 25 },
+      { emoji: '🍋', name: '柠檬', value: 12, weight: 20 },
+      { emoji: '🍇', name: '葡萄', value: 20, weight: 15 },
+      { emoji: '🍓', name: '草莓', value: 30, weight: 7 },
+      { emoji: '💎', name: '钻石', value: 50, weight: 2 },
+      { emoji: '💰', name: '钱袋', value: 100, weight: 1 },
+    ]
+  },
+  { name: '稀有刮刮乐', cls: 'tier-rare', cost: 50, color: '#3b82f6',
+    prizes: [
+      { emoji: '🍊', name: '橙子', value: 20, weight: 25 },
+      { emoji: '🍇', name: '葡萄', value: 35, weight: 25 },
+      { emoji: '🍓', name: '草莓', value: 60, weight: 20 },
+      { emoji: '💎', name: '钻石', value: 100, weight: 15 },
+      { emoji: '👑', name: '皇冠', value: 200, weight: 10 },
+      { emoji: '🏆', name: '奖杯', value: 350, weight: 4 },
+      { emoji: '💰', name: '金库', value: 500, weight: 1 },
+    ]
+  },
+  { name: '史诗刮刮乐', cls: 'tier-epic', cost: 200, color: '#8b5cf6',
+    prizes: [
+      { emoji: '💎', name: '钻石', value: 80, weight: 20 },
+      { emoji: '👑', name: '皇冠', value: 200, weight: 25 },
+      { emoji: '🏆', name: '奖杯', value: 400, weight: 25 },
+      { emoji: '💰', name: '金库', value: 600, weight: 15 },
+      { emoji: '⭐', name: '流星', value: 1000, weight: 10 },
+      { emoji: '🌟', name: '巨星', value: 2000, weight: 4 },
+      { emoji: '💫', name: '宇宙', value: 5000, weight: 1 },
+    ]
+  },
+  { name: '传说刮刮乐', cls: 'tier-legend', cost: 1000, color: '#f59e0b',
+    prizes: [
+      { emoji: '🏆', name: '奖杯', value: 500, weight: 15 },
+      { emoji: '💰', name: '金库', value: 1000, weight: 20 },
+      { emoji: '⭐', name: '流星', value: 2000, weight: 25 },
+      { emoji: '🌟', name: '巨星', value: 5000, weight: 20 },
+      { emoji: '💫', name: '宇宙', value: 10000, weight: 12 },
+      { emoji: '🎆', name: '烟花', value: 25000, weight: 6 },
+      { emoji: '🃏', name: '王牌', value: 50000, weight: 2 },
+    ]
+  }
+];
+
+// 升级配置
+const UPGRADES = {
+  luck: {
+    name: '🍀 幸运值',
+    desc: '提高中大奖的概率',
+    baseCost: 30,
+    costMult: 1.8,
+    maxLevel: 20,
+    effect: (lvl) => `当前幸运 +${lvl}，大奖概率 +${(lvl * 2)}%`
+  },
+  income: {
+    name: '⏳ 被动收入',
+    desc: '每秒自动获得金币',
+    baseCost: 50,
+    costMult: 2.0,
+    maxLevel: 15,
+    effect: (lvl) => `每秒 +${lvl * 2} 金币`
+  },
+  scratch: {
+    name: '✨ 刮开速度',
+    desc: '减少需要刮开的面积',
+    baseCost: 40,
+    costMult: 1.6,
+    maxLevel: 10,
+    effect: (lvl) => `需刮开 ${(30 - lvl * 2)}% 面积`
+  }
+};
+
+// ==================== 核心逻辑 ====================
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('scratchGame');
+    if (saved) return { ...DEFAULT_STATE, ...JSON.parse(saved) };
+  } catch(e) {}
+  return { ...DEFAULT_STATE };
+}
+
+function saveState() {
+  localStorage.setItem('scratchGame', JSON.stringify(state));
+}
+
+function getScratchThreshold() {
+  return 30 - state.upgrades.scratch * 2;
+}
+
+function getTier() {
+  return TIERS[state.currentTier];
+}
+
+function rollPrize() {
+  const tier = getTier();
+  const luckBonus = state.luck * 0.02;
+  let prizes = tier.prizes.map(p => {
+    let w = p.weight;
+    if (p.value >= tier.cost * 3) {
+      w = w * (1 + luckBonus * 2);
+    }
+    return { ...p, adjustedWeight: w };
+  });
+  const total = prizes.reduce((s, p) => s + p.adjustedWeight, 0);
+  let r = Math.random() * total;
+  for (const p of prizes) {
+    r -= p.adjustedWeight;
+    if (r <= 0) return p;
+  }
+  return prizes[prizes.length - 1];
+}
+
+// ==================== 刮刮乐 Canvas ====================
+
+function initCard() {
+  const canvas = document.getElementById('scratchCanvas');
+  const area = document.getElementById('cardArea');
+  const rect = area.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+
+  const ctx = canvas.getContext('2d');
+  const tier = getTier();
+
+  const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  if (tier.cls === 'tier-common') {
+    grad.addColorStop(0, '#9ca3af');
+    grad.addColorStop(1, '#6b7280');
+  } else if (tier.cls === 'tier-rare') {
+    grad.addColorStop(0, '#60a5fa');
+    grad.addColorStop(1, '#3b82f6');
+  } else if (tier.cls === 'tier-epic') {
+    grad.addColorStop(0, '#a78bfa');
+    grad.addColorStop(1, '#8b5cf6');
+  } else {
+    grad.addColorStop(0, '#fbbf24');
+    grad.addColorStop(1, '#f59e0b');
+  }
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = 'bold 28px "Microsoft YaHei"';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🎰 刮开这里 🎰', canvas.width/2, canvas.height/2);
+  ctx.font = '14px "Microsoft YaHei"';
+  ctx.fillText('用鼠标或手指刮开涂层', canvas.width/2, canvas.height/2 + 30);
+
+  scratched = false;
+  currentPrize = rollPrize();
+
+  document.getElementById('prizeEmoji').textContent = currentPrize.emoji;
+  document.getElementById('prizeText').textContent = `${currentPrize.name} +${currentPrize.value}💰`;
+
+  const tierEl = document.getElementById('cardTier');
+  tierEl.textContent = tier.name;
+  tierEl.className = 'card-tier ' + tier.cls;
+
+  canvas.onmousedown = canvas.ontouchstart = (e) => { scratching = true; scratch(e); };
+  canvas.onmousemove = canvas.ontouchmove = (e) => { if (scratching) scratch(e); };
+  canvas.onmouseup = canvas.ontouchend = () => { scratching = false; checkReveal(); };
+}
+
+function scratch(e) {
+  e.preventDefault();
+  const canvas = document.getElementById('scratchCanvas');
+  const ctx = canvas.getContext('2d');
+  const rect = canvas.getBoundingClientRect();
+
+  let x, y;
+  if (e.touches) {
+    x = e.touches[0].clientX - rect.left;
+    y = e.touches[0].clientY - rect.top;
+  } else {
+    x = e.clientX - rect.left;
+    y = e.clientY - rect.top;
+  }
+
+  ctx.globalCompositeOperation = 'destination-out';
+  const brushSize = 30;
+  ctx.beginPath();
+  ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+  ctx.fill();
+
+  for (let i = 0; i < 3; i++) {
+    const ox = x + (Math.random() - 0.5) * brushSize;
+    const oy = y + (Math.random() - 0.5) * brushSize;
+    ctx.beginPath();
+    ctx.arc(ox, oy, brushSize * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function checkReveal() {
+  if (scratched) return;
+  const canvas = document.getElementById('scratchCanvas');
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+
+  let transparent = 0;
+  const total = pixels.length / 4;
+  for (let i = 3; i < pixels.length; i += 4) {
+    if (pixels[i] < 128) transparent++;
+  }
+
+  const percent = (transparent / total) * 100;
+  if (percent >= getScratchThreshold()) {
+    revealPrize();
+  }
+}
+
+function revealPrize() {
+  scratched = true;
+  const canvas = document.getElementById('scratchCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const prize = currentPrize;
+  state.coins += prize.value;
+  state.history.unshift({
+    emoji: prize.emoji,
+    name: prize.name,
+    value: prize.value,
+    time: new Date().toLocaleTimeString()
+  });
+  if (state.history.length > 20) state.history.pop();
+
+  updateUI();
+  saveState();
+
+  showCoinPop(prize.value);
+  if (prize.value >= getTier().cost * 5) {
+    document.getElementById('cardArea').classList.add('glow');
+    setTimeout(() => document.getElementById('cardArea').classList.remove('glow'), 3000);
+    showToast(`🎉 大奖！${prize.emoji} ${prize.name} +${prize.value}金币！`);
+  }
+}
+
+function showCoinPop(amount) {
+  const el = document.createElement('div');
+  el.className = 'coin-pop';
+  el.textContent = `+${amount}💰`;
+  el.style.left = '50%';
+  el.style.top = '40%';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+// ==================== 商店 ====================
+
+function openShop() {
+  const list = document.getElementById('shopList');
+  list.innerHTML = '';
+  TIERS.forEach((tier, i) => {
+    const unlocked = i <= state.currentTier + 1;
+    const owned = i <= state.currentTier;
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.innerHTML = `
+      <div class="item-info">
+        <div class="item-name">${tier.name}</div>
+        <div class="item-desc">价格 ${tier.cost} 金币 | 最高奖金 ${tier.prizes[tier.prizes.length-1].value}💰</div>
+        ${owned ? '<div class="item-level">✅ 已解锁</div>' : ''}
+      </div>
+      <button class="item-price" ${!unlocked || owned ? 'disabled' : ''}
+        onclick="buyTier(${i})">${owned ? '已拥有' : unlocked ? tier.cost + '💰' : '🔒'}</button>
+    `;
+    list.appendChild(div);
+  });
+  document.getElementById('shopModal').classList.add('active');
+}
+
+function closeShop() {
+  document.getElementById('shopModal').classList.remove('active');
+}
+
+function buyTier(index) {
+  const tier = TIERS[index];
+  if (state.coins < tier.cost) {
+    showToast('❌ 金币不足！');
+    return;
+  }
+  if (index > state.currentTier + 1) return;
+  state.coins -= tier.cost;
+  state.currentTier = index;
+  saveState();
+  updateUI();
+  openShop();
+  showToast(`✅ 解锁了 ${tier.name}！`);
+}
+
+function buyCard() {
+  const tier = getTier();
+  if (state.coins < tier.cost) {
+    showToast('❌ 金币不足！去商店升级刮刮乐等级吧');
+    document.getElementById('cardArea').classList.add('shake');
+    setTimeout(() => document.getElementById('cardArea').classList.remove('shake'), 300);
+    return;
+  }
+  state.coins -= tier.cost;
+  saveState();
+  updateUI();
+  initCard();
+  showToast(`🎫 购买了一张 ${tier.name}！`);
+}
+
+// ==================== 升级 ====================
+
+function openUpgrade() {
+  const list = document.getElementById('upgradeList');
+  list.innerHTML = '';
+  for (const [key, cfg] of Object.entries(UPGRADES)) {
+    const lvl = state.upgrades[key];
+    const maxed = lvl >= cfg.maxLevel;
+    const cost = maxed ? 0 : Math.floor(cfg.baseCost * Math.pow(cfg.costMult, lvl));
+    const canBuy = !maxed && state.coins >= cost;
+
+    const div = document.createElement('div');
+    div.className = 'upgrade-item';
+    div.innerHTML = `
+      <div class="item-info">
+        <div class="item-name">${cfg.name} <span style="color:#10b981">Lv.${lvl}</span></div>
+        <div class="item-desc">${cfg.desc}</div>
+        <div class="item-desc" style="color:#ffd700">${cfg.effect(lvl)}</div>
+        ${maxed ? '<div class="item-level">🏆 已满级</div>' : ''}
+      </div>
+      <button class="item-price" ${!canBuy ? 'disabled' : ''}
+        onclick="buyUpgrade('${key}')">${maxed ? 'MAX' : cost + '💰'}</button>
+    `;
+    list.appendChild(div);
+  }
+  document.getElementById('upgradeModal').classList.add('active');
+}
+
+function closeUpgrade() {
+  document.getElementById('upgradeModal').classList.remove('active');
+}
+
+function buyUpgrade(key) {
+  const cfg = UPGRADES[key];
+  const lvl = state.upgrades[key];
+  if (lvl >= cfg.maxLevel) return;
+  const cost = Math.floor(cfg.baseCost * Math.pow(cfg.costMult, lvl));
+  if (state.coins < cost) {
+    showToast('❌ 金币不足！');
+    return;
+  }
+  state.coins -= cost;
+  state.upgrades[key]++;
+  state.luck = state.upgrades.luck;
+  state.income = state.upgrades.income * 2;
+  saveState();
+  updateUI();
+  openUpgrade();
+  showToast(`⬆️ ${cfg.name} 升级到 Lv.${state.upgrades[key]}！`);
+}
+
+// ==================== 被动收入 ====================
+
+setInterval(() => {
+  if (state.income > 0) {
+    state.coins += state.income;
+    saveState();
+    updateUI();
+  }
+}, 1000);
+
+// ==================== UI更新 ====================
+
+function updateUI() {
+  document.getElementById('coins').textContent = state.coins.toLocaleString();
+  document.getElementById('luck').textContent = state.luck;
+  document.getElementById('income').textContent = state.income + '/秒';
+
+  const list = document.getElementById('historyList');
+  list.innerHTML = state.history.map(h =>
+    `<div class="history-item ${h.value >= getTier().cost * 2 ? 'win' : ''}">
+      ${h.time} - ${h.emoji} ${h.name} <span class="win">+${h.value}💰</span>
+    </div>`
+  ).join('');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function resetGame() {
+  if (confirm('确定要重置游戏吗？所有进度将丢失！')) {
+    localStorage.removeItem('scratchGame');
+    state = { ...DEFAULT_STATE };
+    updateUI();
+    initCard();
+    showToast('🔄 游戏已重置');
+  }
+}
+
+// ==================== 初始化 ====================
+updateUI();
+initCard();
+window.addEventListener('resize', () => { if (!scratched) initCard(); });
+</script>
+</body>
+</html>
