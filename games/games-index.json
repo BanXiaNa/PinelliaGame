@@ -38,5 +38,13 @@
     "color": "#ff9800",
     "path": "games/scratch-card",
     "tags": ["抽奖", "休闲"]
+  },
+  {
+    "name": "射击游戏",
+    "description": "紧张刺激的射击小游戏，考验你的反应速度",
+    "icon": "🔫",
+    "color": "#ff5722",
+    "path": "games/shooting",
+    "tags": ["射击", "动作"]
   }
 ]

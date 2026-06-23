@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>武器射击小游戏</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a2e;
+  font-family: 'Segoe UI', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  user-select: none;
+}
+#gameArea {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(180deg, #16213e 0%, #0f3460 100%);
+  cursor: crosshair;
+  overflow: hidden;
+}
+/* 星空背景 */
+.star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle 2s infinite alternate;
+}
+@keyframes twinkle {
+  0% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+/* 武器选择栏 */
+#weaponBar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 100;
+  background: rgba(0,0,0,0.6);
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.weapon-btn {
+  width: 80px;
+  height: 80px;
+  border: 2px solid #555;
+  border-radius: 10px;
+  background: rgba(30,30,60,0.9);
+  color: #ddd;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+}
+.weapon-btn:hover {
+  border-color: #00d4ff;
+  background: rgba(0,212,255,0.15);
+  transform: translateY(-3px);
+}
+.weapon-btn.active {
+  border-color: #00ff88;
+  background: rgba(0,255,136,0.2);
+  box-shadow: 0 0 15px rgba(0,255,136,0.4);
+}
+.weapon-icon { font-size: 28px; margin-bottom: 4px; }
+.weapon-name { font-weight: bold; font-size: 12px; }
+.weapon-stats { font-size: 9px; color: #aaa; margin-top: 2px; }
+/* HUD */
+#hud {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  color: #fff;
+  z-index: 100;
+  font-size: 14px;
+}
+#hud div { margin-bottom: 6px; }
+.hud-label { color: #aaa; font-size: 11px; }
+.hud-value { font-size: 20px; font-weight: bold; }
+#score { color: #00ff88; }
+#ammo { color: #ffcc00; }
+#combo { color: #ff6b6b; }
+#currentWeapon {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  color: #fff;
+  z-index: 100;
+  text-align: right;
+}
+#currentWeapon .name { font-size: 24px; font-weight: bold; color: #00d4ff; }
+#currentWeapon .info { font-size: 12px; color: #aaa; margin-top: 4px; }
+/* 目标 */
+.target {
+  position: absolute;
+  border-radius: 50%;
+  cursor: crosshair;
+  transition: none;
+  animation: spawn 0.3s ease-out;
+}
+@keyframes spawn {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.target.normal {
+  width: 50px; height: 50px;
+  background: radial-gradient(circle at 35% 35%, #ff6b6b, #c0392b);
+  box-shadow: 0 0 20px rgba(255,107,107,0.5);
+}
+.target.fast {
+  width: 35px; height: 35px;
+  background: radial-gradient(circle at 35% 35%, #feca57, #f39c12);
+  box-shadow: 0 0 20px rgba(254,202,87,0.5);
+}
+.target.big {
+  width: 70px; height: 70px;
+  background: radial-gradient(circle at 35% 35%, #a29bfe, #6c5ce7);
+  box-shadow: 0 0 25px rgba(162,155,254,0.5);
+}
+.target.bonus {
+  width: 45px; height: 45px;
+  background: radial-gradient(circle at 35% 35%, #00ff88, #00b894);
+  box-shadow: 0 0 25px rgba(0,255,136,0.6);
+  animation: spawn 0.3s ease-out, pulse 0.5s infinite alternate;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 20px rgba(0,255,136,0.4); }
+  100% { box-shadow: 0 0 40px rgba(0,255,136,0.8); }
+}
+/* 击中效果 */
+.hit-effect {
+  position: absolute;
+  pointer-events: none;
+  font-size: 18px;
+  font-weight: bold;
+  color: #ffcc00;
+  animation: hitFloat 0.8s ease-out forwards;
+  z-index: 50;
+  text-shadow: 0 0 5px rgba(0,0,0,0.8);
+}
+@keyframes hitFloat {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
+}
+/* 爆炸 */
+.explosion {
+  position: absolute;
+  pointer-events: none;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,200,0,0.9), rgba(255,100,0,0.6), transparent);
+  animation: explode 0.4s ease-out forwards;
+  z-index: 40;
+}
+@keyframes explode {
+  0% { transform: scale(0.3); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+/* 弹孔 */
+.bullet-hole {
+  position: absolute;
+  width: 8px; height: 8px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 30;
+  box-shadow: 0 0 3px rgba(0,0,0,0.8);
+}
+/* 枪口闪光 */
+.muzzle-flash {
+  position: fixed;
+  pointer-events: none;
+  width: 30px; height: 30px;
+  background: radial-gradient(circle, #fff, #ffcc00, transparent);
+  border-radius: 50%;
+  z-index: 200;
+  animation: flash 0.1s ease-out forwards;
+}
+@keyframes flash {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2); }
+}
+/* 波次提示 */
+#waveAnnounce {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 48px;
+  font-weight: bold;
+  z-index: 150;
+  text-shadow: 0 0 20px rgba(0,212,255,0.8);
+  opacity: 0;
+  pointer-events: none;
+}
+#waveAnnounce.show {
+  animation: waveIn 2s ease-out forwards;
+}
+@keyframes waveIn {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+/* 开始/结束画面 */
+#startScreen, #gameOverScreen {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+#startScreen h1, #gameOverScreen h1 {
+  font-size: 48px;
+  margin-bottom: 10px;
+  background: linear-gradient(135deg, #00d4ff, #00ff88);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.subtitle { color: #aaa; margin-bottom: 30px; font-size: 16px; }
+.start-btn {
+  padding: 15px 50px;
+  font-size: 20px;
+  background: linear-gradient(135deg, #00d4ff, #00b894);
+  border: none;
+  border-radius: 30px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s;
+}
+.start-btn:hover { transform: scale(1.08); }
+#gameOverScreen { display: none; }
+#finalScore { font-size: 36px; color: #00ff88; margin: 15px 0; }
+/* 装填提示 */
+#reloadHint {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffcc00;
+  font-size: 24px;
+  font-weight: bold;
+  z-index: 150;
+  display: none;
+  text-shadow: 0 0 10px rgba(0,0,0,0.8);
+}
+</style>
+</head>
+<body>
+<div id="startScreen">
+  <h1>🎯 武器射击场</h1>
+  <div class="subtitle">选择武器，消灭所有目标！</div>
+  <button class="start-btn" onclick="startGame()">开始游戏</button>
+</div>
+
+<div id="gameOverScreen">
+  <h1>游戏结束</h1>
+  <div>最终得分</div>
+  <div id="finalScore">0</div>
+  <div id="finalStats" style="color:#aaa;margin-bottom:20px;font-size:14px;"></div>
+  <button class="start-btn" onclick="startGame()">再来一局</button>
+</div>
+
+<div id="gameArea">
+  <div id="hud">
+    <div><span class="hud-label">得分</span><div id="score" class="hud-value">0</div></div>
+    <div><span class="hud-label">弹药</span><div id="ammo" class="hud-value">30/30</div></div>
+    <div><span class="hud-label">连杀</span><div id="combo" class="hud-value">x0</div></div>
+    <div><span class="hud-label">波次</span><div id="waveNum" class="hud-value">1</div></div>
+    <div><span class="hud-label">生命</span><div id="lives" class="hud-value" style="color:#ff6b6b">❤❤❤</div></div>
+  </div>
+  <div id="currentWeapon">
+    <div class="name" id="cwName">AK-47</div>
+    <div class="info" id="cwInfo">伤害: 35 | 射速: 快</div>
+  </div>
+  <div id="weaponBar"></div>
+  <div id="waveAnnounce"></div>
+  <div id="reloadHint">按 R 装填</div>
+</div>
+
+<script>
+// 武器数据
+const WEAPONS = [
+  {
+    id: 'ak47', name: 'AK-47', icon: '🔫',
+    damage: 35, fireRate: 120, magSize: 30, reloadTime: 2200,
+    spread: 3, desc: '经典突击步枪，火力猛',
+    stats: '伤害:35 射速:快 弹匣:30'
+  },
+  {
+    id: 'm14', name: 'M14', icon: '🎯',
+    damage: 55, fireRate: 250, magSize: 20, reloadTime: 2500,
+    spread: 1.5, desc: '精准半自动步枪',
+    stats: '伤害:55 射速:中 弹匣:20'
+  },
+  {
+    id: 'p90', name: 'P90', icon: '⚡',
+    damage: 18, fireRate: 60, magSize: 50, reloadTime: 2800,
+    spread: 5, desc: '超高射速冲锋枪',
+    stats: '伤害:18 射速:极快 弹匣:50'
+  },
+  {
+    id: 'm338', name: 'M338', icon: '💥',
+    damage: 80, fireRate: 400, magSize: 10, reloadTime: 3500,
+    spread: 0.5, desc: '重型机枪，毁灭性火力',
+    stats: '伤害:80 射速:慢 弹匣:10'
+  },
+  {
+    id: 'awm', name: 'AWM', icon: '🔴',
+    damage: 150, fireRate: 1200, magSize: 5, reloadTime: 3000,
+    spread: 0.2, desc: '狙击之王，一击必杀',
+    stats: '伤害:150 射速:极慢 弹匣:5'
+  },
+  {
+    id: 'mj3', name: 'MJ3', icon: '🌀',
+    damage: 45, fireRate: 180, magSize: 25, reloadTime: 2000,
+    spread: 2, desc: '未来科技步枪',
+    stats: '伤害:45 射速:快 弹匣:25'
+  }
+];
+
+let gameState = {
+  running: false,
+  score: 0,
+  combo: 0,
+  maxCombo: 0,
+  wave: 1,
+  lives: 3,
+  weaponIndex: 0,
+  ammo: 30,
+  reloading: false,
+  lastShot: 0,
+  targetsHit: 0,
+  totalShots: 0,
+  targets: [],
+  spawnTimer: null,
+  moveTimer: null,
+  waveTargets: 0,
+  waveKilled: 0,
+};
+
+// 初始化武器栏
+function initWeaponBar() {
+  const bar = document.getElementById('weaponBar');
+  bar.innerHTML = '';
+  WEAPONS.forEach((w, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'weapon-btn' + (i === 0 ? ' active' : '');
+    btn.innerHTML = `<div class="weapon-icon">${w.icon}</div><div class="weapon-name">${w.name}</div><div class="weapon-stats">${w.stats}</div>`;
+    btn.onclick = (e) => { e.stopPropagation(); selectWeapon(i); };
+    bar.appendChild(btn);
+  });
+}
+
+function selectWeapon(index) {
+  if (gameState.reloading) return;
+  gameState.weaponIndex = index;
+  gameState.ammo = WEAPONS[index].magSize;
+  gameState.reloading = false;
+  document.querySelectorAll('.weapon-btn').forEach((b, i) => {
+    b.classList.toggle('active', i === index);
+  });
+  document.getElementById('cwName').textContent = WEAPONS[index].name;
+  document.getElementById('cwInfo').textContent = WEAPONS[index].desc;
+  updateHUD();
+}
+
+// 创建星空
+function createStars() {
+  const area = document.getElementById('gameArea');
+  for (let i = 0; i < 80; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.width = star.style.height = (Math.random() * 3 + 1) + 'px';
+    star.style.animationDelay = Math.random() * 2 + 's';
+    area.appendChild(star);
+  }
+}
+
+function startGame() {
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('gameOverScreen').style.display = 'none';
+
+  // 清理
+  document.querySelectorAll('.target, .hit-effect, .explosion, .bullet-hole').forEach(e => e.remove());
+  gameState = {
+    running: true, score: 0, combo: 0, maxCombo: 0,
+    wave: 1, lives: 3, weaponIndex: 0, ammo: 30,
+    reloading: false, lastShot: 0, targetsHit: 0, totalShots: 0,
+    targets: [], spawnTimer: null, moveTimer: null,
+    waveTargets: 0, waveKilled: 0,
+  };
+  selectWeapon(0);
+  updateHUD();
+  startWave();
+}
+
+function startWave() {
+  const wave = gameState.wave;
+  gameState.waveTargets = 5 + wave * 3;
+  gameState.waveKilled = 0;
+
+  const announce = document.getElementById('waveAnnounce');
+  announce.textContent = `第 ${wave} 波`;
+  announce.classList.remove('show');
+  void announce.offsetWidth;
+  announce.classList.add('show');
+
+  let spawned = 0;
+  const interval = Math.max(400, 1200 - wave * 80);
+
+  clearInterval(gameState.spawnTimer);
+  gameState.spawnTimer = setInterval(() => {
+    if (!gameState.running) return;
+    if (spawned >= gameState.waveTargets) {
+      clearInterval(gameState.spawnTimer);
+      return;
+    }
+    spawnTarget();
+    spawned++;
+  }, interval);
+
+  clearInterval(gameState.moveTimer);
+  gameState.moveTimer = setInterval(() => {
+    if (!gameState.running) return;
+    moveTargets();
+  }, 50);
+}
+
+function spawnTarget() {
+  const types = ['normal', 'normal', 'fast', 'big', 'bonus'];
+  const type = types[Math.floor(Math.random() * types.length)];
+  const el = document.createElement('div');
+  el.className = 'target ' + type;
+
+  const hpMap = { normal: 1, fast: 1, big: 3, bonus: 1 };
+  const scoreMap = { normal: 10, fast: 20, big: 30, bonus: 50 };
+  const speedMap = { normal: 1, fast: 2.5, big: 0.5, bonus: 1.5 };
+
+  const x = 60 + Math.random() * (window.innerWidth - 160);
+  const y = 60 + Math.random() * (window.innerHeight - 220);
+
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+
+  const targetData = {
+    el, type, hp: hpMap[type], maxHp: hpMap[type],
+    score: scoreMap[type], speed: speedMap[type],
+    dx: (Math.random() - 0.5) * speedMap[type] * 2,
+    dy: (Math.random() - 0.5) * speedMap[type] * 2,
+  };
+
+  el.dataset.index = gameState.targets.length;
+  gameState.targets.push(targetData);
+  document.getElementById('gameArea').appendChild(el);
+
+  // 超时消失
+  setTimeout(() => {
+    if (el.parentNode && targetData.hp > 0) {
+      el.remove();
+      targetData.hp = 0;
+      if (type !== 'bonus') {
+        gameState.combo = 0;
+        gameState.lives--;
+        updateHUD();
+        if (gameState.lives <= 0) gameOver();
+      }
+      checkWaveComplete();
+    }
+  }, type === 'bonus' ? 4000 : 6000 + gameState.wave * 500);
+}
+
+function moveTargets() {
+  gameState.targets.forEach(t => {
+    if (t.hp <= 0 || !t.el.parentNode) return;
+    let x = parseFloat(t.el.style.left) + t.dx;
+    let y = parseFloat(t.el.style.top) + t.dy;
+
+    if (x < 20 || x > window.innerWidth - 80) t.dx *= -1;
+    if (y < 20 || y > window.innerHeight - 180) t.dy *= -1;
+
+    x = Math.max(20, Math.min(window.innerWidth - 80, x));
+    y = Math.max(20, Math.min(window.innerHeight - 180, y));
+
+    t.el.style.left = x + 'px';
+    t.el.style.top = y + 'px';
+  });
+}
+
+function checkWaveComplete() {
+  const alive = gameState.targets.filter(t => t.hp > 0 && t.el.parentNode);
+  if (alive.length === 0 && gameState.waveKilled >= gameState.waveTargets) {
+    setTimeout(() => {
+      if (!gameState.running) return;
+      gameState.wave++;
+      gameState.lives = Math.min(gameState.lives + 1, 5);
+      updateHUD();
+      startWave();
+    }, 1500);
+  }
+}
+
+function shoot(x, y) {
+  if (!gameState.running || gameState.reloading) return;
+
+  const now = Date.now();
+  const weapon = WEAPONS[gameState.weaponIndex];
+
+  if (now - gameState.lastShot < weapon.fireRate) return;
+  if (gameState.ammo <= 0) {
+    showReloadHint();
+    return;
+  }
+
+  gameState.lastShot = now;
+  gameState.ammo--;
+  gameState.totalShots++;
+
+  // 枪口闪光
+  const flash = document.createElement('div');
+  flash.className = 'muzzle-flash';
+  flash.style.left = (x - 15) + 'px';
+  flash.style.top = (y - 15) + 'px';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 100);
+
+  // 弹孔
+  const hole = document.createElement('div');
+  hole.className = 'bullet-hole';
+  hole.style.left = (x - 4 + (Math.random() - 0.5) * weapon.spread * 4) + 'px';
+  hole.style.top = (y - 4 + (Math.random() - 0.5) * weapon.spread * 4) + 'px';
+  document.getElementById('gameArea').appendChild(hole);
+  setTimeout(() => hole.remove(), 3000);
+
+  // 检测命中
+  let hit = false;
+  const targets = [...gameState.targets];
+  for (const t of targets) {
+    if (t.hp <= 0 || !t.el.parentNode) continue;
+    const rect = t.el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dist = Math.hypot(x - cx, y - cy);
+    if (dist < rect.width / 2 + 5) {
+      t.hp -= weapon.damage / (t.type === 'big' ? 30 : 1);
+      hit = true;
+
+      if (t.hp <= 0) {
+        // 击杀
+        gameState.combo++;
+        gameState.maxCombo = Math.max(gameState.maxCombo, gameState.combo);
+        const comboBonus = Math.min(gameState.combo, 10);
+        const points = t.score * comboBonus;
+        gameState.score += points;
+        gameState.targetsHit++;
+        gameState.waveKilled++;
+
+        showHitEffect(x, y, `+${points}` + (comboBonus > 1 ? ` x${comboBonus}` : ''));
+        createExplosion(rect.left + rect.width/2 - 30, rect.top + rect.height/2 - 30);
+        t.el.remove();
+        checkWaveComplete();
+      } else {
+        // 受伤闪烁
+        t.el.style.filter = 'brightness(2)';
+        setTimeout(() => { if(t.el) t.el.style.filter = ''; }, 100);
+        showHitEffect(x, y, `${Math.round(weapon.damage)}`);
+      }
+      break;
+    }
+  }
+
+  if (!hit) {
+    gameState.combo = 0;
+  }
+
+  updateHUD();
+
+  if (gameState.ammo <= 0) {
+    setTimeout(() => showReloadHint(), 300);
+  }
+}
+
+function showHitEffect(x, y, text) {
+  const el = document.createElement('div');
+  el.className = 'hit-effect';
+  el.textContent = text;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.getElementById('gameArea').appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+function createExplosion(x, y) {
+  const el = document.createElement('div');
+  el.className = 'explosion';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.getElementById('gameArea').appendChild(el);
+  setTimeout(() => el.remove(), 400);
+}
+
+function showReloadHint() {
+  const hint = document.getElementById('reloadHint');
+  hint.style.display = 'block';
+  setTimeout(() => hint.style.display = 'none', 1500);
+}
+
+function reload() {
+  if (gameState.reloading || !gameState.running) return;
+  const weapon = WEAPONS[gameState.weaponIndex];
+  if (gameState.ammo >= weapon.magSize) return;
+
+  gameState.reloading = true;
+  const hint = document.getElementById('reloadHint');
+  hint.textContent = '装填中...';
+  hint.style.display = 'block';
+
+  setTimeout(() => {
+    gameState.ammo = weapon.magSize;
+    gameState.reloading = false;
+    hint.style.display = 'none';
+    hint.textContent = '按 R 装填';
+    updateHUD();
+  }, weapon.reloadTime);
+}
+
+function updateHUD() {
+  document.getElementById('score').textContent = gameState.score;
+  const weapon = WEAPONS[gameState.weaponIndex];
+  document.getElementById('ammo').textContent = `${gameState.ammo}/${weapon.magSize}`;
+  document.getElementById('combo').textContent = `x${gameState.combo}`;
+  document.getElementById('waveNum').textContent = gameState.wave;
+  document.getElementById('lives').textContent = '❤'.repeat(gameState.lives) + '🖤'.repeat(Math.max(0, 3 - gameState.lives));
+}
+
+function gameOver() {
+  gameState.running = false;
+  clearInterval(gameState.spawnTimer);
+  clearInterval(gameState.moveTimer);
+
+  document.getElementById('finalScore').textContent = gameState.score;
+  document.getElementById('finalStats').innerHTML =
+    `命中: ${gameState.targetsHit} | 射击: ${gameState.totalShots} | 准确率: ${gameState.totalShots ? Math.round(gameState.targetsHit / gameState.totalShots * 100) : 0}%<br>最高连杀: x${gameState.maxCombo} | 到达波次: ${gameState.wave}`;
+  document.getElementById('gameOverScreen').style.display = 'flex';
+}
+
+// 事件
+document.getElementById('gameArea').addEventListener('click', (e) => {
+  if (e.target.closest('.weapon-btn')) return;
+  shoot(e.clientX, e.clientY);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (!gameState.running) return;
+  const num = parseInt(e.key);
+  if (num >= 1 && num <= 6) {
+    selectWeapon(num - 1);
+  }
+  if (e.key.toLowerCase() === 'r') {
+    reload();
+  }
+});
+
+// 初始化
+createStars();
+initWeaponBar();
+</script>
+</body>
+</html>
