@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>末日生存</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; overflow:hidden; font-family:'Microsoft YaHei',sans-serif; }
+canvas { display:block; cursor:crosshair; }
+#ui { position:fixed; top:10px; left:10px; color:#fff; font-size:14px; }
+#ui div { margin:4px 0; background:rgba(0,0,0,0.7); padding:4px 8px; border-radius:4px; }
+#shop { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:rgba(0,0,0,0.95); border:2px solid #f00; padding:20px; border-radius:10px;
+  color:#fff; min-width:450px; max-height:80vh; overflow-y:auto; z-index:100; }
+#shop h2 { text-align:center; color:#f44; margin-bottom:15px; }
+#shop .item { display:flex; justify-content:space-between; align-items:center;
+  padding:10px; margin:5px 0; background:rgba(255,255,255,0.1); border-radius:5px; }
+#shop .item:hover { background:rgba(255,255,255,0.2); }
+#shop button { background:#c00; color:#fff; border:none; padding:6px 15px;
+  border-radius:4px; cursor:pointer; font-size:13px; }
+#shop button:hover { background:#f00; }
+#shop button:disabled { background:#666; cursor:not-allowed; }
+#closeShop { position:absolute; top:10px; right:15px; font-size:20px; cursor:pointer; color:#f44; }
+#startScreen { position:fixed; top:0; left:0; width:100%; height:100%;
+  background:linear-gradient(135deg,#1a0000,#000,#1a0000);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:200; }
+#startScreen h1 { font-size:60px; color:#f00; text-shadow:0 0 30px #f00; margin-bottom:20px; }
+#startScreen p { color:#aaa; margin:5px 0; font-size:14px; }
+#startBtn { margin-top:30px; padding:15px 50px; font-size:24px; background:#c00;
+  color:#fff; border:none; border-radius:8px; cursor:pointer; }
+#startBtn:hover { background:#f00; }
+#gameOver { display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.9); z-index:200; flex-direction:column;
+  align-items:center; justify-content:center; }
+#gameOver h1 { font-size:50px; color:#f00; }
+#gameOver p { color:#fff; font-size:20px; margin:10px; }
+#restartBtn { margin-top:20px; padding:12px 40px; font-size:20px; background:#c00;
+  color:#fff; border:none; border-radius:8px; cursor:pointer; }
+#rankBadge { position:fixed; top:10px; right:10px; text-align:center; z-index:50; }
+#rankBadge .rank-icon { font-size:50px; }
+#rankBadge .rank-name { font-size:16px; font-weight:bold; }
+#rankBadge .rank-score { font-size:12px; color:#aaa; }
+#rankBadge .rank-bar { width:120px; height:8px; background:#333; border-radius:4px; margin:4px auto; overflow:hidden; }
+#rankBadge .rank-bar-fill { height:100%; border-radius:4px; transition:width 0.5s; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <div>❤️ 生命: <span id="hp">100</span>/<span id="maxHp">100</span></div>
+  <div>🔫 <span id="weaponName">手枪</span> | 伤害:<span id="dmg">10</span></div>
+  <div>📦 弹药: <span id="ammo">∞</span></div>
+  <div>💰 金币: <span id="gold">0</span></div>
+  <div>🏆 关卡: <span id="wave">1</span> | 击杀: <span id="kills">0</span></div>
+  <div style="color:#0f0">按 [B] 打开商店</div>
+</div>
+
+<div id="shop">
+  <span id="closeShop">✕</span>
+  <h2>🏪 末日军火库</h2>
+  <div id="shopItems"></div>
+</div>
+
+<div id="rankBadge">
+  <div class="rank-icon" id="rankIcon">🥉</div>
+  <div class="rank-name" id="rankName" style="color:#cd7f32">青铜 III</div>
+  <div class="rank-score">⭐ <span id="rankScore">0</span>/<span id="rankMax">100</span></div>
+  <div class="rank-bar"><div class="rank-bar-fill" id="rankBar" style="width:0%;background:#cd7f32"></div></div>
+</div>
+
+<div id="startScreen">
+  <h1>☠ 末日生存 ☠</h1>
+  <p>方向键/WASD 移动 | 鼠标点击射击</p>
+  <p>击杀敌人获取金币，按 B 打开商店</p>
+  <p>每5波出现BOSS，掉落稀有装备！</p>
+  <div style="margin:20px 0; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px;">
+    <p style="color:#f80;font-size:18px">🏆 当前段位: <span id="startRank" style="color:#cd7f32">青铜 III</span></p>
+    <p style="color:#aaa;font-size:12px">排位积分根据击杀数和存活波数计算</p>
+  </div>
+  <button id="startBtn">🎮 开始排位赛</button>
+</div>
+
+<div id="gameOver">
+  <h1>☠ 你死了 ☠</h1>
+  <div id="gameOverRank" style="margin:15px 0; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px;">
+    <div style="font-size:60px" id="goRankIcon">🥉</div>
+    <div style="font-size:24px; font-weight:bold" id="goRankName">青铜 III</div>
+  </div>
+  <p>存活到第 <span id="finalWave">1</span> 关 | 击杀数: <span id="finalKills">0</span></p>
+  <p>获得积分: <span id="finalScore" style="color:#0f0">+0</span></p>
+  <p id="rankChange" style="font-size:18px; margin:10px 0"></p>
+  <button id="restartBtn">再来一局</button>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+// 段位系统
+const ranks = [
+  { name:'青铜 III', icon:'🥉', color:'#cd7f32', min:0, max:100 },
+  { name:'青铜 II', icon:'🥉', color:'#cd7f32', min:100, max:250 },
+  { name:'青铜 I', icon:'🥉', color:'#cd7f32', min:250, max:450 },
+  { name:'白银 III', icon:'🥈', color:'#c0c0c0', min:450, max:700 },
+  { name:'白银 II', icon:'🥈', color:'#c0c0c0', min:700, max:1000 },
+  { name:'白银 I', icon:'🥈', color:'#c0c0c0', min:1000, max:1400 },
+  { name:'黄金 III', icon:'🥇', color:'#ffd700', min:1400, max:1900 },
+  { name:'黄金 II', icon:'🥇', color:'#ffd700', min:1900, max:2500 },
+  { name:'黄金 I', icon:'🥇', color:'#ffd700', min:2500, max:3200 },
+  { name:'铂金 III', icon:'💎', color:'#00ced1', min:3200, max:4000 },
+  { name:'铂金 II', icon:'💎', color:'#00ced1', min:4000, max:5000 },
+  { name:'铂金 I', icon:'💎', color:'#00ced1', min:5000, max:6200 },
+  { name:'钻石 III', icon:'💠', color:'#4169e1', min:6200, max:7500 },
+  { name:'钻石 II', icon:'💠', color:'#4169e1', min:7500, max:9000 },
+  { name:'钻石 I', icon:'💠', color:'#4169e1', min:9000, max:11000 },
+  { name:'王者', icon:'👑', color:'#ff4500', min:11000, max:Infinity },
+];
+
+let rankScore = parseInt(localStorage.getItem('doomRankScore') || '0');
+
+function getRank(score) {
+  for(let i=ranks.length-1; i>=0; i--) {
+    if(score >= ranks[i].min) return { ...ranks[i], index:i };
+  }
+  return { ...ranks[0], index:0 };
+}
+
+function updateRankDisplay() {
+  let rank = getRank(rankScore);
+  let nextRank = ranks[rank.index+1];
+  let progress = nextRank ? ((rankScore-rank.min)/(rank.max-rank.min)*100) : 100;
+
+  document.getElementById('rankIcon').textContent = rank.icon;
+  document.getElementById('rankName').textContent = rank.name;
+  document.getElementById('rankName').style.color = rank.color;
+  document.getElementById('rankScore').textContent = rankScore;
+  document.getElementById('rankMax').textContent = nextRank ? rank.max : '∞';
+  document.getElementById('rankBar').style.width = progress+'%';
+  document.getElementById('rankBar').style.background = rank.color;
+  document.getElementById('startRank').textContent = rank.name;
+  document.getElementById('startRank').style.color = rank.color;
+}
+
+// 游戏状态
+let game = {
+  running: false,
+  wave: 1,
+  enemiesLeft: 0,
+  waveDelay: 0,
+  gold: 0,
+  kills: 0,
+  shopOpen: false,
+  particles: [],
+  drops: [],
+  bullets: [],
+  enemies: [],
+  shake: 0
+};
+
+// 玩家
+let player = {
+  x: canvas.width/2, y: canvas.height/2,
+  w: 30, h: 30,
+  hp: 100, maxHp: 100,
+  speed: 4,
+  angle: 0,
+  weapon: 0,
+  cooldown: 0,
+  armor: 0,
+  regen: 0,
+  regenTimer: 0
+};
+
+// 武器系统
+const weapons = [
+  { name:'手枪', dmg:10, speed:8, rate:15, spread:0.05, count:1, ammo:Infinity, color:'#ff0' },
+  { name:'霰弹枪', dmg:8, speed:7, rate:30, spread:0.3, count:5, ammo:Infinity, color:'#fa0' },
+  { name:'冲锋枪', dmg:7, speed:9, rate:5, spread:0.1, count:1, ammo:Infinity, color:'#0ff' },
+  { name:'步枪', dmg:20, speed:12, rate:20, spread:0.02, count:1, ammo:Infinity, color:'#0f0' },
+  { name:'狙击枪', dmg:80, speed:15, rate:50, spread:0, count:1, ammo:Infinity, color:'#f0f' },
+  { name:'火箭筒', dmg:50, speed:6, rate:40, spread:0.05, count:1, ammo:Infinity, color:'#f44', explosive:true },
+];
+
+// 技能状态
+let skills = {
+  crit: 0,        // 暴击率
+  critDmg: 2,     // 暴击伤害倍率
+  penetrate: 0,   // 穿透
+  lifesteal: 0,   // 吸血
+  dodge: 0,       // 闪避率
+  thorns: 0,      // 反伤
+  magnet: 50,     // 拾取范围
+  multishot: 0,   // 多重射击
+  slowAura: 0,    // 减速光环
+  fireDmg: 0,     // 燃烧伤害
+  shield: 0,      // 护盾
+  shieldMax: 0,   // 护盾上限
+  expRange: 60,   // 爆炸范围
+  moveDmg: 0,     // 移动伤害
+  killHeal: 0,    // 击杀回血
+  goldMul: 1,     // 金币倍率
+};
+
+// 装备商店
+const shopItems = [
+  // === 生命恢复 ===
+  { id:'hp1', name:'🩹 急救包', desc:'恢复50生命', cost:25, cat:'life',
+    effect:()=>{ player.hp=Math.min(player.hp+50,player.maxHp); }},
+  { id:'hp2', name:'❤️ 强化心脏', desc:'最大生命+50', cost:80, cat:'life',
+    effect:()=>{ player.maxHp+=50; player.hp+=50; }},
+  { id:'hp3', name:'💖 生命之泉', desc:'最大生命+100', cost:200, cat:'life',
+    effect:()=>{ player.maxHp+=100; player.hp+=100; }},
+  { id:'regen', name:'💊 再生芯片', desc:'每秒恢复2HP', cost:100, cat:'life',
+    effect:()=>{ player.regen+=2; }},
+  { id:'regen2', name:'💉 纳米修复', desc:'每秒恢复5HP', cost:300, cat:'life',
+    effect:()=>{ player.regen+=5; }},
+  { id:'killheal', name:'🧛 嗜血本能', desc:'击杀回复5HP', cost:150, cat:'life',
+    effect:()=>{ skills.killHeal+=5; }},
+
+  // === 防御 ===
+  { id:'armor1', name:'🦺 防弹衣', desc:'减伤15%', cost:80, cat:'def',
+    effect:()=>{ player.armor=Math.min(player.armor+0.15,0.75); }},
+  { id:'armor2', name:'🛡️ 重型护甲', desc:'减伤25%', cost:200, cat:'def',
+    effect:()=>{ player.armor=Math.min(player.armor+0.25,0.75); }},
+  { id:'dodge', name:'👟 闪避芯片', desc:'15%闪避攻击', cost:180, cat:'def',
+    effect:()=>{ skills.dodge+=0.15; }},
+  { id:'thorns', name:'🦔 荆棘甲', desc:'反弹30%伤害', cost:220, cat:'def',
+    effect:()=>{ skills.thorns+=0.3; }},
+  { id:'shield', name:'🔰 能量护盾', desc:'获得50护盾', cost:150, cat:'def',
+    effect:()=>{ skills.shieldMax+=50; skills.shield+=50; }},
+  { id:'shield2', name:'💎 钻石护盾', desc:'获得100护盾', cost:350, cat:'def',
+    effect:()=>{ skills.shieldMax+=100; skills.shield+=100; }},
+
+  // === 移动 ===
+  { id:'spd', name:'🥾 战术靴', desc:'移速+1', cost:50, cat:'move',
+    effect:()=>{ player.speed+=1; }},
+  { id:'spd2', name:'⚡ 闪电之靴', desc:'移速+2', cost:150, cat:'move',
+    effect:()=>{ player.speed+=2; }},
+  { id:'magnet', name:'🧲 磁力芯片', desc:'拾取范围+50', cost:80, cat:'move',
+    effect:()=>{ skills.magnet+=50; }},
+  { id:'magnet2', name:'🌀 超级磁铁', desc:'拾取范围+100', cost:200, cat:'move',
+    effect:()=>{ skills.magnet+=100; }},
+  { id:'movedmg', name:'🔥 烈焰冲锋', desc:'移动时对敌人造成伤害', cost:250, cat:'move',
+    effect:()=>{ skills.moveDmg+=5; }},
+
+  // === 武器 ===
+  { id:'w1', name:'🔫 霰弹枪', desc:'近距离散射', cost:80, cat:'weapon',
+    effect:()=>{ unlockWeapon(1); }},
+  { id:'w2', name:'🔫 冲锋枪', desc:'高射速', cost:120, cat:'weapon',
+    effect:()=>{ unlockWeapon(2); }},
+  { id:'w3', name:'🔫 步枪', desc:'高伤害', cost:200, cat:'weapon',
+    effect:()=>{ unlockWeapon(3); }},
+  { id:'w4', name:'🔫 狙击枪', desc:'超高单发伤害', cost:350, cat:'weapon',
+    effect:()=>{ unlockWeapon(4); }},
+  { id:'w5', name:'🚀 火箭筒', desc:'范围爆炸', cost:500, cat:'weapon',
+    effect:()=>{ unlockWeapon(5); }},
+
+  // === 攻击强化 ===
+  { id:'dmg1', name:'⚔️ 伤害芯片I', desc:'所有武器伤害+5', cost:80, cat:'atk',
+    effect:()=>{ weapons.forEach(w=>w.dmg+=5); }},
+  { id:'dmg2', name:'⚔️ 伤害芯片II', desc:'所有武器伤害+10', cost:200, cat:'atk',
+    effect:()=>{ weapons.forEach(w=>w.dmg+=10); }},
+  { id:'dmg3', name:'⚔️ 伤害芯片III', desc:'所有武器伤害+20', cost:450, cat:'atk',
+    effect:()=>{ weapons.forEach(w=>w.dmg+=20); }},
+  { id:'crit', name:'💥 暴击芯片', desc:'20%暴击率(双倍伤害)', cost:200, cat:'atk',
+    effect:()=>{ skills.crit+=0.2; }},
+  { id:'crit2', name:'💥 致命打击', desc:'暴击伤害3倍', cost:350, cat:'atk',
+    effect:()=>{ skills.critDmg=3; }},
+  { id:'penetrate', name:'🔫 穿透弹', desc:'子弹穿透1个敌人', cost:180, cat:'atk',
+    effect:()=>{ skills.penetrate+=1; }},
+  { id:'multishot', name:'🌟 多重射击', desc:'额外发射1颗子弹', cost:300, cat:'atk',
+    effect:()=>{ skills.multishot+=1; }},
+  { id:'fire', name:'🔥 燃烧弹', desc:'击中附加燃烧伤害', cost:250, cat:'atk',
+    effect:()=>{ skills.fireDmg+=3; }},
+  { id:'explode', name:'💣 爆炸强化', desc:'爆炸范围+30', cost:200, cat:'atk',
+    effect:()=>{ skills.expRange+=30; }},
+  { id:'lifesteal', name:'🧛 生命偷取', desc:'伤害10%转化为生命', cost:280, cat:'atk',
+    effect:()=>{ skills.lifesteal+=0.1; }},
+
+  // === 特殊 ===
+  { id:'slow', name:'❄️ 冰冻光环', desc:'周围敌人移速-30%', cost:300, cat:'special',
+    effect:()=>{ skills.slowAura+=0.3; }},
+  { id:'goldmul', name:'💰 双倍金币', desc:'金币获取x2', cost:400, cat:'special',
+    effect:()=>{ skills.goldMul=2; }},
+  { id:'nuke', name:'☢️ 战术核弹', desc:'清屏!全屏伤害', cost:500, cat:'special',
+    effect:()=>{
+      game.enemies.forEach(e=>{
+        e.hp-=500;
+        addParticle(e.x,e.y,'#f80',15);
+      });
+      game.shake=30;
+      addParticle(canvas.width/2,canvas.height/2,'#ff0',50);
+    }},
+];
+
+let unlockedWeapons = [true,false,false,false,false,false];
+function unlockWeapon(i) { unlockedWeapons[i]=true; player.weapon=i; }
+
+// 输入
+const keys = {};
+let mouseX=0, mouseY=0, mouseDown=false;
+
+document.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if(e.key.toLowerCase()==='b' && game.running) toggleShop();
+  // 数字键切换武器
+  if(e.key>='1' && e.key<='6') {
+    let idx = parseInt(e.key)-1;
+    if(unlockedWeapons[idx]) player.weapon=idx;
+  }
+});
+document.addEventListener('keyup', e => keys[e.key.toLowerCase()]=false);
+document.addEventListener('mousemove', e => { mouseX=e.clientX; mouseY=e.clientY; });
+document.addEventListener('mousedown', e => { mouseDown=true; });
+document.addEventListener('mouseup', e => { mouseDown=false; });
+
+// 商店
+function toggleShop() {
+  game.shopOpen = !game.shopOpen;
+  document.getElementById('shop').style.display = game.shopOpen?'block':'none';
+  if(game.shopOpen) renderShop();
+}
+
+function renderShop() {
+  const cats = {
+    weapon:'🔫 武器', atk:'⚔️ 攻击', def:'🛡️ 防御',
+    life:'❤️ 生命', move:'👟 移动', special:'✨ 特殊'
+  };
+  let html = '';
+  for(let cat in cats) {
+    html += `<div style="color:#f80;font-size:16px;margin:15px 0 8px;border-bottom:1px solid #f80;padding-bottom:5px">${cats[cat]}</div>`;
+    shopItems.filter(i=>i.cat===cat).forEach(item => {
+      let bought = item.id.startsWith('w') && unlockedWeapons[parseInt(item.id[1])];
+      let canBuy = game.gold >= item.cost && !bought;
+      html += `<div class="item">
+        <div><b>${item.name}</b> <span style="color:#aaa;font-size:12px">${item.desc}</span></div>
+        <button ${canBuy?'':'disabled'} onclick="buyItem('${item.id}')">
+          ${bought?'✅已拥有':item.cost+'💰'}
+        </button>
+      </div>`;
+    });
+  }
+  document.getElementById('shopItems').innerHTML = html;
+}
+
+window.buyItem = function(id) {
+  let item = shopItems.find(i=>i.id===id);
+  if(item && game.gold >= item.cost) {
+    game.gold -= item.cost;
+    item.effect();
+    renderShop();
+    updateUI();
+  }
+};
+
+document.getElementById('closeShop').onclick = () => toggleShop();
+
+// 子弹
+function shoot(x, y, angle, weapon) {
+  let w = weapons[weapon];
+  let total = w.count + skills.multishot;
+  for(let i=0; i<total; i++) {
+    let a = angle + (Math.random()-0.5)*w.spread*2;
+    // 暴击判定
+    let isCrit = Math.random() < skills.crit;
+    let dmg = isCrit ? w.dmg * skills.critDmg : w.dmg;
+    game.bullets.push({
+      x, y, vx:Math.cos(a)*w.speed, vy:Math.sin(a)*w.speed,
+      dmg, life:80, color:isCrit?'#f00':w.color,
+      explosive:w.explosive||false,
+      penetrate:skills.penetrate,
+      crit:isCrit
+    });
+  }
+}
+
+// 敌人类型
+function spawnEnemy(type) {
+  let side = Math.floor(Math.random()*4);
+  let x, y;
+  if(side===0) { x=Math.random()*canvas.width; y=-30; }
+  else if(side===1) { x=canvas.width+30; y=Math.random()*canvas.height; }
+  else if(side===2) { x=Math.random()*canvas.width; y=canvas.height+30; }
+  else { x=-30; y=Math.random()*canvas.height; }
+
+  let w = game.wave;
+  let e = { x, y, angle:0, cooldown:0, type };
+  if(type==='normal') {
+    e.hp=Math.floor((20+w*8)*(1+w*0.1)); e.maxHp=e.hp; e.speed=1.5+w*0.05; e.w=25; e.h=25;
+    e.color='#f44'; e.dmg=Math.floor(10+w*2); e.gold=5+Math.floor(w*1.5); e.xp=1;
+  } else if(type==='fast') {
+    e.hp=Math.floor((15+w*5)*(1+w*0.1)); e.maxHp=e.hp; e.speed=3+w*0.1; e.w=20; e.h=20;
+    e.color='#ff0'; e.dmg=Math.floor(8+w*1.5); e.gold=8+w; e.xp=1;
+  } else if(type==='tank') {
+    e.hp=Math.floor((80+w*25)*(1+w*0.15)); e.maxHp=e.hp; e.speed=0.8+w*0.03; e.w=40; e.h=40;
+    e.color='#0af'; e.dmg=Math.floor(20+w*4); e.gold=15+w*2; e.xp=3;
+  } else if(type==='boss') {
+    e.hp=Math.floor((300+w*80)*(1+w*0.2)); e.maxHp=e.hp; e.speed=1+w*0.05; e.w=60; e.h=60;
+    e.color='#f0f'; e.dmg=Math.floor(30+w*6); e.gold=100+w*10; e.xp=10;
+  } else if(type==='shooter') {
+    e.hp=Math.floor((30+w*12)*(1+w*0.1)); e.maxHp=e.hp; e.speed=1+w*0.04; e.w=28; e.h=28;
+    e.color='#0f0'; e.dmg=Math.floor(15+w*3); e.gold=12+w*2; e.xp=2; e.shootRate=Math.max(20, 60-w*2);
+  }
+  game.enemies.push(e);
+}
+
+// 波次系统
+function startWave() {
+  let count = 5 + game.wave * 3;
+  game.enemiesLeft = count;
+  game.waveDelay = 120;
+
+  let types = ['normal'];
+  if(game.wave >= 2) types.push('fast');
+  if(game.wave >= 3) types.push('tank');
+  if(game.wave >= 4) types.push('shooter');
+
+  // 每5波BOSS
+  if(game.wave % 5 === 0) {
+    spawnEnemy('boss');
+    count--;
+  }
+
+
+  for(let i=0; i<count; i++) {
+    setTimeout(() => {
+      if(game.running) spawnEnemy(types[Math.floor(Math.random()*types.length)]);
+    }, i * 500);
+  }
+}
+
+// 掉落物
+function spawnDrop(x, y) {
+  let rand = Math.random();
+  if(rand < 0.35) {
+    game.drops.push({ x, y, type:'gold', value:8+Math.floor(Math.random()*12), life:300 });
+  } else if(rand < 0.5) {
+    game.drops.push({ x, y, type:'hp', value:25, life:300 });
+  } else if(rand < 0.7) {
+    game.drops.push({ x, y, type:'ammo', value:50, life:300 });
+  }
+}
+
+// 粒子效果
+function addParticle(x, y, color, count=5) {
+  for(let i=0; i<count; i++) {
+    let angle = Math.random()*Math.PI*2;
+    let speed = Math.random()*3+1;
+    game.particles.push({
+      x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed,
+      life:20+Math.random()*20, color, size:Math.random()*4+2
+    });
+  }
+}
+
+// 爆炸
+function explode(x, y, radius) {
+  radius = radius || skills.expRange;
+  addParticle(x, y, '#f80', 20);
+  addParticle(x, y, '#ff0', 15);
+  game.enemies.forEach(e => {
+    let dx=e.x-x, dy=e.y-y;
+    if(Math.sqrt(dx*dx+dy*dy) < radius) {
+      e.hp -= 30;
+    }
+  });
+  game.shake = 10;
+}
+
+// 碰撞检测
+function collides(a, b) {
+  return Math.abs(a.x-b.x) < (a.w+b.w)/2 && Math.abs(a.y-b.y) < (a.h+b.h)/2;
+}
+
+// 更新UI
+function updateUI() {
+  document.getElementById('hp').textContent = Math.floor(player.hp);
+  document.getElementById('maxHp').textContent = player.maxHp;
+  document.getElementById('weaponName').textContent = weapons[player.weapon].name;
+  document.getElementById('dmg').textContent = weapons[player.weapon].dmg;
+  document.getElementById('ammo').textContent = '∞';
+  document.getElementById('gold').textContent = game.gold;
+  document.getElementById('wave').textContent = game.wave;
+  document.getElementById('kills').textContent = game.kills;
+  // 护盾显示
+  if(skills.shieldMax > 0) {
+    document.getElementById('hp').textContent += ` | 🛡️${Math.floor(skills.shield)}`;
+  }
+}
+
+// 游戏主循环
+function update() {
+  if(!game.running || game.shopOpen) return;
+
+  // 玩家移动
+  let dx=0, dy=0;
+  if(keys['w']||keys['arrowup']) dy=-1;
+  if(keys['s']||keys['arrowdown']) dy=1;
+  if(keys['a']||keys['arrowleft']) dx=-1;
+  if(keys['d']||keys['arrowright']) dx=1;
+  if(dx&&dy) { dx*=0.707; dy*=0.707; }
+  player.x = Math.max(player.w/2, Math.min(canvas.width-player.w/2, player.x+dx*player.speed));
+  player.y = Math.max(player.h/2, Math.min(canvas.height-player.h/2, player.y+dy*player.speed));
+
+  // 玩家朝向鼠标
+  player.angle = Math.atan2(mouseY-player.y, mouseX-player.x);
+
+  // 生命恢复
+  if(player.regen > 0) {
+    player.regenTimer++;
+    if(player.regenTimer >= 60) {
+      player.regenTimer = 0;
+      player.hp = Math.min(player.hp + player.regen, player.maxHp);
+    }
+  }
+
+  // 射击
+  if(player.cooldown > 0) player.cooldown--;
+  if(mouseDown && player.cooldown <= 0) {
+    let w = weapons[player.weapon];
+    shoot(player.x, player.y, player.angle, player.weapon);
+    player.cooldown = w.rate;
+    game.shake = 2;
+  }
+
+  // 子弹更新
+  game.bullets.forEach(b => {
+    b.x += b.vx;
+    b.y += b.vy;
+    b.life--;
+    // 击中敌人
+    game.enemies.forEach(e => {
+      if(e.hp > 0 && Math.abs(b.x-e.x)<e.w/2 && Math.abs(b.y-e.y)<e.h/2) {
+        let dmg = b.dmg;
+        e.hp -= dmg;
+        // 吸血
+        if(skills.lifesteal > 0) {
+          player.hp = Math.min(player.hp + dmg*skills.lifesteal, player.maxHp);
+        }
+        // 燃烧
+        if(skills.fireDmg > 0) {
+          e.burning = 60;
+          e.burnDmg = skills.fireDmg;
+        }
+        addParticle(b.x, b.y, b.crit?'#f00':'#ff0', b.crit?8:3);
+        if(b.explosive) explode(b.x, b.y);
+        // 穿透
+        if(b.penetrate > 0) {
+          b.penetrate--;
+        } else {
+          b.life = 0;
+        }
+      }
+    });
+  });
+  game.bullets = game.bullets.filter(b => b.life>0 && b.x>0 && b.x<canvas.width && b.y>0 && b.y<canvas.height);
+
+  // 敌人更新
+  game.enemies.forEach(e => {
+    let dx = player.x-e.x, dy = player.y-e.y;
+    let dist = Math.sqrt(dx*dx+dy*dy);
+    e.angle = Math.atan2(dy, dx);
+
+    // 减速光环
+    let slowFactor = 1;
+    if(skills.slowAura > 0 && dist < 200) {
+      slowFactor = 1 - skills.slowAura;
+    }
+
+    // 燃烧伤害
+    if(e.burning > 0) {
+      e.burning--;
+      e.hp -= e.burnDmg;
+      if(Math.random()<0.3) addParticle(e.x, e.y, '#f80', 2);
+    }
+
+    if(e.type === 'shooter' && dist < 300) {
+      // 射手型敌人射击
+      if(!e.cooldown) e.cooldown = 0;
+      e.cooldown--;
+      if(e.cooldown <= 0) {
+        let a = Math.atan2(player.y-e.y, player.x-e.x);
+        game.bullets.push({
+          x:e.x, y:e.y, vx:Math.cos(a)*5, vy:Math.sin(a)*5,
+          dmg:e.dmg, life:60, color:'#0f0', enemy:true
+        });
+        e.cooldown = e.shootRate || 60;
+      }
+    } else {
+      // 追击玩家
+      e.x += (dx/dist)*e.speed*slowFactor;
+      e.y += (dy/dist)*e.speed*slowFactor;
+    }
+
+    // 移动伤害
+    if(skills.moveDmg > 0 && dist < 40 && (dx!==0||dy!==0)) {
+      e.hp -= skills.moveDmg;
+      addParticle(e.x, e.y, '#f80', 2);
+    }
+
+    // 碰撞玩家
+    if(collides(e, player)) {
+      // 闪避判定
+      if(Math.random() < skills.dodge) {
+        addParticle(player.x, player.y, '#0ff', 5);
+      } else {
+        let dmg = e.dmg * (1 - player.armor);
+        // 护盾吸收
+        if(skills.shield > 0) {
+          let absorbed = Math.min(skills.shield, dmg);
+          skills.shield -= absorbed;
+          dmg -= absorbed;
+          addParticle(player.x, player.y, '#0af', 3);
+        }
+        player.hp -= dmg;
+        // 反伤
+        if(skills.thorns > 0) {
+          e.hp -= e.dmg * skills.thorns;
+          addParticle(e.x, e.y, '#a0f', 3);
+        }
+        addParticle(player.x, player.y, '#f00', 5);
+      }
+      let pushAngle = Math.atan2(player.y-e.y, player.x-e.x);
+      player.x += Math.cos(pushAngle)*10;
+      player.y += Math.sin(pushAngle)*10;
+      game.shake = 5;
+    }
+  });
+
+  // 敌人子弹击中玩家
+  game.bullets.filter(b=>b.enemy).forEach(b => {
+    if(Math.abs(b.x-player.x)<player.w/2 && Math.abs(b.y-player.y)<player.h/2) {
+      player.hp -= b.dmg * (1-player.armor);
+      b.life = 0;
+      addParticle(player.x, player.y, '#f00', 5);
+    }
+  });
+
+  // 敌人死亡
+  game.enemies = game.enemies.filter(e => {
+    if(e.hp <= 0) {
+      game.gold += Math.floor(e.gold * skills.goldMul);
+      game.kills++;
+      // 击杀回血
+      if(skills.killHeal > 0) {
+        player.hp = Math.min(player.hp + skills.killHeal, player.maxHp);
+      }
+      addParticle(e.x, e.y, e.color, 10);
+      spawnDrop(e.x, e.y);
+      game.enemiesLeft--;
+      return false;
+    }
+    return true;
+  });
+
+  // 拾取掉落物(磁力范围)
+  game.drops = game.drops.filter(d => {
+    d.life--;
+    let dx = d.x-player.x, dy = d.y-player.y;
+    let dist = Math.sqrt(dx*dx+dy*dy);
+    // 磁力吸引
+    if(dist < skills.magnet && dist > 20) {
+      d.x -= (dx/dist)*3;
+      d.y -= (dy/dist)*3;
+    }
+    if(dist < 30) {
+      if(d.type==='gold') game.gold += Math.floor(d.value * skills.goldMul);
+      else if(d.type==='hp') player.hp = Math.min(player.hp+d.value, player.maxHp);
+      addParticle(d.x, d.y, '#0f0', 5);
+      return false;
+    }
+    return d.life > 0;
+  });
+
+  // 粒子
+  game.particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.95; p.vy *= 0.95;
+    p.life--; p.size *= 0.95;
+  });
+  game.particles = game.particles.filter(p => p.life > 0);
+
+  // 波次管理
+  if(game.enemiesLeft <= 0 && game.enemies.length === 0) {
+    if(game.waveDelay > 0) game.waveDelay--;
+    else {
+      game.wave++;
+      startWave();
+    }
+  }
+
+  // 玩家死亡
+  if(player.hp <= 0) {
+    game.running = false;
+
+    // 计算排位积分
+    let waveScore = game.wave * 15;
+    let killScore = game.kills * 3;
+    let bonusScore = game.wave >= 10 ? Math.floor(game.wave * game.kills * 0.1) : 0;
+    let totalScore = waveScore + killScore + bonusScore;
+
+    let oldRank = getRank(rankScore);
+    rankScore += totalScore;
+    localStorage.setItem('doomRankScore', rankScore.toString());
+    let newRank = getRank(rankScore);
+
+    document.getElementById('gameOver').style.display = 'flex';
+    document.getElementById('finalWave').textContent = game.wave;
+    document.getElementById('finalKills').textContent = game.kills;
+    document.getElementById('finalScore').textContent = '+'+totalScore;
+    document.getElementById('goRankIcon').textContent = newRank.icon;
+    document.getElementById('goRankName').textContent = newRank.name;
+    document.getElementById('goRankName').style.color = newRank.color;
+
+    if(newRank.index > oldRank.index) {
+      document.getElementById('rankChange').innerHTML = `<span style="color:#0f0;font-size:24px">🎉 晋升到 ${newRank.name}！</span>`;
+    } else if(totalScore > 0) {
+      document.getElementById('rankChange').textContent = `积分 +${totalScore}`;
+    }
+
+    updateRankDisplay();
+  }
+
+  // 屏幕震动
+  if(game.shake > 0) game.shake--;
+
+  updateUI();
+}
+
+function draw() {
+  ctx.save();
+
+  // 屏幕震动
+  if(game.shake > 0) {
+    ctx.translate(
+      (Math.random()-0.5)*game.shake*2,
+      (Math.random()-0.5)*game.shake*2
+    );
+  }
+
+  // 背景
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 网格背景
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 1;
+  for(let x=0; x<canvas.width; x+=50) {
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+  }
+  for(let y=0; y<canvas.height; y+=50) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+  }
+
+  // 掉落物
+  game.drops.forEach(d => {
+    ctx.save();
+    ctx.globalAlpha = d.life < 60 ? d.life/60 : 1;
+    ctx.fillStyle = d.type==='gold'?'#fd0':d.type==='hp'?'#f44':'#4af';
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, 10, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(d.type==='gold'?'💰':d.type==='hp'?'❤':'🔵', d.x, d.y+4);
+    ctx.restore();
+  });
+
+  // 子弹
+  game.bullets.forEach(b => {
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 4, 0, Math.PI*2);
+    ctx.fill();
+    // 子弹拖尾
+    ctx.strokeStyle = b.color;
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x-b.vx*3, b.y-b.vy*3);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+
+  // 敌人
+  game.enemies.forEach(e => {
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.angle);
+
+    // 敌人身体
+    ctx.fillStyle = e.color;
+    ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
+
+    // 敌人眼睛
+    ctx.fillStyle = '#000';
+    ctx.fillRect(e.w/4, -e.h/4, e.w/4, e.h/4);
+    ctx.fillRect(e.w/4, e.h/8, e.w/4, e.h/4);
+
+    // 血条
+    ctx.rotate(-e.angle);
+    ctx.fillStyle = '#300';
+    ctx.fillRect(-e.w/2, -e.h/2-10, e.w, 5);
+    ctx.fillStyle = '#f00';
+    ctx.fillRect(-e.w/2, -e.h/2-10, e.w*(e.hp/e.maxHp), 5);
+
+    ctx.restore();
+  });
+
+  // 玩家
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.rotate(player.angle);
+
+  // 身体
+  ctx.fillStyle = '#0af';
+  ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
+
+  // 武器
+  ctx.fillStyle = '#888';
+  ctx.fillRect(player.w/2-5, -3, 20, 6);
+  ctx.fillStyle = '#555';
+  ctx.fillRect(player.w/2+10, -4, 8, 8);
+
+  // 眼睛
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(player.w/4, -player.h/4, 8, 8);
+  ctx.fillRect(player.w/4, player.h/8, 8, 8);
+
+  ctx.restore();
+
+  // 玩家血条
+  ctx.fillStyle = '#300';
+  ctx.fillRect(player.x-20, player.y-25, 40, 5);
+  ctx.fillStyle = '#0f0';
+  ctx.fillRect(player.x-20, player.y-25, 40*(player.hp/player.maxHp), 5);
+
+  // 粒子
+  game.particles.forEach(p => {
+    ctx.globalAlpha = p.life/40;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // 准心
+  ctx.strokeStyle = '#f00';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(mouseX, mouseY, 15, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(mouseX-20, mouseY); ctx.lineTo(mouseX-8, mouseY);
+  ctx.moveTo(mouseX+8, mouseY); ctx.lineTo(mouseX+20, mouseY);
+  ctx.moveTo(mouseX, mouseY-20); ctx.lineTo(mouseX, mouseY-8);
+  ctx.moveTo(mouseX, mouseY+8); ctx.lineTo(mouseX, mouseY+20);
+  ctx.stroke();
+
+  // 波次提示
+  if(game.waveDelay > 60) {
+    ctx.fillStyle = '#fff';
+    ctx.font = '40px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`第 ${game.wave} 波`, canvas.width/2, canvas.height/2);
+    if(game.wave%5===0) {
+      ctx.fillStyle = '#f0f';
+      ctx.font = '24px sans-serif';
+      ctx.fillText('⚠ BOSS来袭 ⚠', canvas.width/2, canvas.height/2+40);
+    }
+  }
+
+  // 武器切换提示
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'left';
+  let wy = canvas.height - 20;
+  for(let i=0; i<weapons.length; i++) {
+    if(unlockedWeapons[i]) {
+      ctx.fillStyle = player.weapon===i ? '#ff0' : '#aaa';
+      ctx.fillText(`[${i+1}] ${weapons[i].name}`, 10, wy);
+      wy -= 18;
+    }
+  }
+
+  ctx.restore();
+
+  if(game.running) {
+    update();
+    requestAnimationFrame(draw);
+  }
+}
+
+// 开始游戏
+function startGame() {
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('gameOver').style.display = 'none';
+
+  player.x = canvas.width/2;
+  player.y = canvas.height/2;
+  player.hp = 100;
+  player.maxHp = 100;
+  player.speed = 4;
+  player.weapon = 0;
+  player.armor = 0;
+  player.regen = 0;
+  player.regenTimer = 0;
+
+  weapons.forEach((w,i) => {
+    w.dmg = [10,8,7,20,80,50][i];
+    w.ammo = Infinity;
+  });
+
+  unlockedWeapons = [true,false,false,false,false,false];
+
+  // 重置技能
+  skills = {
+    crit:0, critDmg:2, penetrate:0, lifesteal:0, dodge:0,
+    thorns:0, magnet:50, multishot:0, slowAura:0, fireDmg:0,
+    shield:0, shieldMax:0, expRange:60, moveDmg:0, killHeal:0, goldMul:1
+  };
+
+  game = {
+    running: true,
+    wave: 1,
+    enemiesLeft: 0,
+    waveDelay: 120,
+    gold: 0,
+    kills: 0,
+    shopOpen: false,
+    particles: [],
+    drops: [],
+    bullets: [],
+    enemies: [],
+    shake: 0
+  };
+
+  startWave();
+  draw();
+}
+
+document.getElementById('startBtn').onclick = startGame;
+document.getElementById('restartBtn').onclick = startGame;
+
+// 初始化段位显示
+updateRankDisplay();
+
+// 窗口调整
+window.onresize = () => {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+};
+</script>
+</body>
+</html>

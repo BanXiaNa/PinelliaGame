@@ -1,0 +1,8 @@
+{
+  "name": "Doom 生存",
+  "description": "Doom 风格的生存射击游戏，对抗怪物浪潮",
+  "icon": "🔥",
+  "color": "#ff0000",
+  "path": "games/doom-survival",
+  "tags": ["射击", "生存", "动作"]
+}
