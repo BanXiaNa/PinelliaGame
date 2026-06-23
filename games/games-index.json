@@ -110,5 +110,13 @@
     "color": "#ff5722",
     "path": "games/whack-a-mole",
     "tags": ["经典", "休闲"]
+  },
+  {
+    "name": "三角洲行动",
+    "description": "军事战术行动小游戏，完成任务目标",
+    "icon": "🎯",
+    "color": "#1a237e",
+    "path": "games/delta-force",
+    "tags": ["战术", "射击"]
   }
 ]

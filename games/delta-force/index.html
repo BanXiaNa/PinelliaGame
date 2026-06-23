@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>三角洲行动 - 空战</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;cursor:crosshair;font-family:'Microsoft YaHei',sans-serif}
+canvas{display:block}
+#ui{position:fixed;top:0;left:0;width:100%;pointer-events:none;z-index:10}
+#hud{display:flex;justify-content:space-between;padding:15px 30px;color:#fff;font-size:14px}
+.side{background:rgba(0,0,0,0.6);padding:12px 20px;border-radius:10px;backdrop-filter:blur(5px)}
+.china{border-left:3px solid #f00}
+.usa{border-right:3px solid #0af;text-align:right}
+#center-info{text-align:center;position:fixed;top:80px;width:100%;pointer-events:none;z-index:10}
+#wave-info{color:#ff0;font-size:20px;text-shadow:0 0 20px #ff0}
+#start-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0a0a2e,#1a0a2e,#0a1a2e);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#start-screen h1{font-size:60px;color:#f00;text-shadow:0 0 30px #f00,0 0 60px #f00;margin-bottom:10px;letter-spacing:10px}
+#start-screen h2{font-size:24px;color:#0af;margin-bottom:40px;letter-spacing:5px}
+.plane-select{display:flex;gap:30px;margin-bottom:30px}
+.plane-card{background:rgba(255,255,255,0.05);border:2px solid #333;padding:20px 30px;border-radius:15px;cursor:pointer;pointer-events:all;transition:all 0.3s;text-align:center;color:#fff}
+.plane-card:hover,.plane-card.selected{border-color:#0af;background:rgba(0,170,255,0.1);box-shadow:0 0 20px rgba(0,170,255,0.3)}
+.plane-card h3{font-size:22px;margin-bottom:5px;color:#0af}
+.plane-card p{font-size:12px;color:#888}
+.plane-card .stats{margin-top:10px;font-size:11px;color:#aaa}
+#start-btn{pointer-events:all;padding:15px 60px;font-size:22px;background:linear-gradient(135deg,#f00,#a00);color:#fff;border:none;border-radius:30px;cursor:pointer;letter-spacing:5px;transition:all 0.3s;text-shadow:0 0 10px rgba(255,0,0,0.5)}
+#start-btn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(255,0,0,0.5)}
+.controls-hint{color:#666;margin-top:30px;font-size:13px;text-align:center;line-height:2}
+#game-over{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#game-over h1{font-size:50px;margin-bottom:20px;text-shadow:0 0 30px}
+#game-over p{font-size:20px;color:#ccc;margin-bottom:30px}
+#restart-btn{pointer-events:all;padding:15px 50px;font-size:20px;background:#0af;color:#fff;border:none;border-radius:30px;cursor:pointer;letter-spacing:3px}
+#msg{position:fixed;bottom:100px;width:100%;text-align:center;color:#ff0;font-size:18px;pointer-events:none;z-index:10;text-shadow:0 0 10px #ff0}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui">
+  <div id="hud">
+    <div class="side china">
+      <div style="color:#f44;font-size:16px;font-weight:bold">🇨🇳 中华力量</div>
+      <div>剩余兵力: <span id="china-count">10000</span> 架</div>
+      <div>已击落敌机: <span id="kills">0</span></div>
+      <div id="player-hp-bar">生命值: <span id="player-hp">100</span>%</div>
+    </div>
+    <div class="side usa">
+      <div style="color:#0af;font-size:16px;font-weight:bold">🇺🇸 美军力量</div>
+      <div>剩余兵力: <span id="usa-count">10</span> 架</div>
+      <div>已损失: <span id="usa-lost">0</span></div>
+    </div>
+  </div>
+</div>
+<div id="center-info"><div id="wave-info"></div></div>
+<div id="msg"></div>
+<div id="start-screen">
+  <h1>三角洲行动</h1>
+  <h2>DELTA FORCE</h2>
+  <div class="plane-select">
+    <div class="plane-card selected" onclick="selectPlane(0)" id="card-j20">
+      <h3>J-20 威龙</h3>
+      <p>第五代重型隐身战斗机</p>
+      <div class="stats">速度: ★★★☆<br>火力: ★★★★<br>机动: ★★★☆<br>装甲: ★★★★</div>
+    </div>
+    <div class="plane-card" onclick="selectPlane(1)" id="card-j35">
+      <h3>J-35 飞鲨</h3>
+      <p>第五代隐身舰载战斗机</p>
+      <div class="stats">速度: ★★★★<br>火力: ★★★☆<br>机动: ★★★★<br>装甲: ★★★☆</div>
+    </div>
+  </div>
+  <button id="start-btn" onclick="startGame()">开 始 作 战</button>
+  <div class="controls-hint">
+    W A S D 移动 ｜ 空格 开火 ｜ 1/2 切换战机<br>
+    击败美军全部10架战机即为胜利！
+  </div>
+</div>
+<div id="game-over">
+  <h1 id="go-title"></h1>
+  <p id="go-msg"></p>
+  <button id="restart-btn" onclick="location.reload()">重新开始</button>
+</div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+let W,H;
+function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight}
+resize();window.onresize=resize;
+
+// Game state
+let selectedPlane=0,gameStarted=false;
+let chinaForces=10000,usaForces=10;
+let player=null,allies=[],enemies=[],bullets=[],particles=[],explosions=[];
+let kills=0,usaLost=0,waveNum=0;
+let keys={},spacePressed=false;
+let cameraX=0,cameraY=0;
+let stars=[];
+let bgPlanes=[]; // background fleet
+let gameRunning=true;
+
+// Plane configs
+const PLANES={
+  j20:{name:'J-20',w:40,h:50,speed:5,fireRate:8,hp:150,color:'#e22',bulletSpeed:12,bulletDmg:25,bulletColor:'#f44'},
+  j35:{name:'J-35',w:36,h:46,speed:6.5,fireRate:6,hp:120,color:'#e52',bulletSpeed:14,bulletDmg:20,bulletColor:'#fa4'},
+  f22:{name:'F-22',w:38,h:48,speed:4.5,fireRate:12,hp:200,color:'#2af',bulletSpeed:8,bulletDmg:15,bulletColor:'#4ef'},
+  f35:{name:'F-35',w:36,h:44,speed:4,fireRate:10,hp:180,color:'#28f',bulletSpeed:7,bulletDmg:18,bulletColor:'#48f'}
+};
+
+function selectPlane(i){
+  selectedPlane=i;
+  document.getElementById('card-j20').className='plane-card'+(i===0?' selected':'');
+  document.getElementById('card-j35').className='plane-card'+(i===1?' selected':'');
+}
+
+// Init stars
+for(let i=0;i<200;i++)stars.push({x:Math.random()*5000-2500,y:Math.random()*5000-2500,s:Math.random()*2+0.5,b:Math.random()});
+
+// Draw plane shapes
+function drawJ20(x,y,angle,scale,c){
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(scale,scale);
+  // Body
+  ctx.fillStyle=c;ctx.beginPath();
+  ctx.moveTo(0,-25);ctx.lineTo(-6,-10);ctx.lineTo(-8,5);ctx.lineTo(-20,20);ctx.lineTo(-8,18);
+  ctx.lineTo(-4,25);ctx.lineTo(4,25);ctx.lineTo(8,18);ctx.lineTo(20,20);ctx.lineTo(8,5);
+  ctx.lineTo(6,-10);ctx.closePath();ctx.fill();
+  // Cockpit
+  ctx.fillStyle='rgba(100,200,255,0.6)';ctx.beginPath();
+  ctx.moveTo(0,-22);ctx.lineTo(-3,-12);ctx.lineTo(3,-12);ctx.closePath();ctx.fill();
+  // Details
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=0.5;
+  ctx.beginPath();ctx.moveTo(0,-25);ctx.lineTo(0,20);ctx.stroke();
+  ctx.restore();
+}
+
+function drawJ35(x,y,angle,scale,c){
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(scale,scale);
+  ctx.fillStyle=c;ctx.beginPath();
+  ctx.moveTo(0,-23);ctx.lineTo(-7,-8);ctx.lineTo(-22,18);ctx.lineTo(-6,15);
+  ctx.lineTo(-3,24);ctx.lineTo(3,24);ctx.lineTo(6,15);ctx.lineTo(22,18);
+  ctx.lineTo(7,-8);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(100,200,255,0.6)';ctx.beginPath();
+  ctx.moveTo(0,-20);ctx.lineTo(-3,-10);ctx.lineTo(3,-10);ctx.closePath();ctx.fill();
+  ctx.restore();
+}
+
+function drawF22(x,y,angle,scale,c){
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(scale,scale);
+  ctx.fillStyle=c;ctx.beginPath();
+  ctx.moveTo(0,-24);ctx.lineTo(-5,-8);ctx.lineTo(-22,15);ctx.lineTo(-10,12);
+  ctx.lineTo(-4,24);ctx.lineTo(4,24);ctx.lineTo(10,12);ctx.lineTo(22,15);
+  ctx.lineTo(5,-8);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(255,200,100,0.5)';ctx.beginPath();
+  ctx.moveTo(0,-21);ctx.lineTo(-3,-10);ctx.lineTo(3,-10);ctx.closePath();ctx.fill();
+  // Twin tails
+  ctx.fillStyle=c;
+  ctx.fillRect(-8,15,3,8);ctx.fillRect(5,15,3,8);
+  ctx.restore();
+}
+
+function drawF35(x,y,angle,scale,c){
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(scale,scale);
+  ctx.fillStyle=c;ctx.beginPath();
+  ctx.moveTo(0,-22);ctx.lineTo(-6,-6);ctx.lineTo(-20,16);ctx.lineTo(-5,14);
+  ctx.lineTo(-3,22);ctx.lineTo(3,22);ctx.lineTo(5,14);ctx.lineTo(20,16);
+  ctx.lineTo(6,-6);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(255,200,100,0.5)';ctx.beginPath();
+  ctx.moveTo(0,-19);ctx.lineTo(-2,-9);ctx.lineTo(2,-9);ctx.closePath();ctx.fill();
+  ctx.restore();
+}
+
+function drawPlane(p){
+  const funcs={j20:drawJ20,j35:drawJ35,f22:drawF22,f35:drawF35};
+  const cfg=PLANES[p.type];
+  const s=p.scale||1;
+  // Glow
+  if(p.isPlayer){
+    ctx.save();ctx.globalAlpha=0.15;ctx.fillStyle='#f00';
+    ctx.beginPath();ctx.arc(p.x,p.y,35,0,Math.PI*2);ctx.fill();ctx.restore();
+  }
+  funcs[p.type](p.x,p.y,p.angle,s,cfg.color);
+  // HP bar for enemies
+  if(p.team==='usa'){
+    const bw=30,bh=3;
+    const bx=p.x-bw/2,by=p.y-35;
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#0f0';ctx.fillRect(bx,by,bw*(p.hp/p.maxHp),bh);
+  }
+  // Engine glow
+  if(Math.random()>0.3){
+    ctx.save();ctx.globalAlpha=0.6;
+    const ex=p.x,ey=p.y+22;
+    const grad=ctx.createRadialGradient(ex,ey,0,ex,ey,8);
+    grad.addColorStop(0,'rgba(255,150,50,0.8)');grad.addColorStop(1,'rgba(255,50,0,0)');
+    ctx.fillStyle=grad;ctx.beginPath();ctx.arc(ex,ey,8,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+}
+
+function createPlane(type,team,x,y){
+  const cfg=PLANES[type];
+  return{type,team,x,y,hp:cfg.hp,maxHp:cfg.hp,angle:team==='china'?0:Math.PI,
+    fireCd:0,speed:cfg.speed,fireRate:cfg.fireRate,scale:1,alive:true,ai:{target:null,moveAngle:Math.random()*Math.PI*2,changeCd:0,evadeCd:0}}
+}
+
+function spawnPlayer(){
+  const cfg=PLANES[selectedPlane===0?'j20':'j35'];
+  player=createPlane(selectedPlane===0?'j20':'j35','china',0,200);
+  player.isPlayer=true;
+  player.hp=cfg.hp*2;player.maxHp=cfg.hp*2;
+}
+
+function spawnWave(){
+  waveNum++;
+  document.getElementById('wave-info').textContent=`第 ${waveNum} 波交战`;
+  setTimeout(()=>document.getElementById('wave-info').textContent='',3000);
+
+  const numEnemy=Math.min(usaForces,Math.ceil(Math.random()*3+1));
+  for(let i=0;i<numEnemy;i++){
+    const type=Math.random()>0.5?'f22':'f35';
+    const e=createPlane(type,'usa',(Math.random()-0.5)*W*0.6,-H*0.3-Math.random()*200);
+    e.hp*=1.5;e.maxHp=e.hp; // Boss-level HP
+    enemies.push(e);
+  }
+
+  // Spawn allies
+  const numAllies=Math.min(chinaForces-1,Math.floor(Math.random()*5)+3);
+  for(let i=0;i<numAllies;i++){
+    const type=Math.random()>0.5?'j20':'j35';
+    const a=createPlane(type,'china',(Math.random()-0.5)*W*0.5,100+Math.random()*200);
+    allies.push(a);
+  }
+}
+
+function fire(p){
+  if(p.fireCd>0)return;
+  const cfg=PLANES[p.type];
+  p.fireCd=p.fireRate;
+  const dx=Math.sin(p.angle),dy=-Math.cos(p.angle);
+  bullets.push({x:p.x+dx*25,y:p.y-dy*25,vx:dx*cfg.bulletSpeed+((p.team==='usa')?0:0),
+    vy:(p.team==='china'?-1:1)*cfg.bulletSpeed,dmg:cfg.bulletDmg,team:p.team,color:cfg.bulletColor,life:120});
+}
+
+function spawnExplosion(x,y,size,color){
+  for(let i=0;i<size;i++){
+    const a=Math.random()*Math.PI*2,s=Math.random()*4+1;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:40+Math.random()*30,
+      maxLife:70,size:Math.random()*3+1,color:color||'#fa0'});
+  }
+  explosions.push({x,y,radius:5,maxRadius:size*3,life:20,maxLife:20,color:color||'#f80'});
+}
+
+function showMsg(text,dur){
+  const el=document.getElementById('msg');el.textContent=text;
+  setTimeout(()=>el.textContent='',dur||2000);
+}
+
+function updatePlayer(){
+  if(!player||!player.alive)return;
+  player.fireCd=Math.max(0,player.fireCd-1);
+  const sp=player.speed;
+  let dx=0,dy=0;
+  if(keys['w']||keys['W']||keys['ArrowUp'])dy=-sp;
+  if(keys['s']||keys['S']||keys['ArrowDown'])dy=sp;
+  if(keys['a']||keys['A']||keys['ArrowLeft'])dx=-sp;
+  if(keys['d']||keys['D']||keys['ArrowRight'])dx=sp;
+  if(dx&&dy){dx*=0.707;dy*=0.707}
+  player.x+=dx;player.y+=dy;
+  // Bounds
+  player.x=Math.max(-W/2+20,Math.min(W/2-20,player.x));
+  player.y=Math.max(-H/2+20,Math.min(H/2-20,player.y));
+  if(spacePressed)fire(player);
+}
+
+function updateAI(list,targets){
+  list.forEach(p=>{
+    if(!p.alive)return;
+    p.fireCd=Math.max(0,p.fireCd-1);
+    p.ai.changeCd--;
+    p.ai.evadeCd=Math.max(0,p.ai.evadeCd-1);
+
+    // Find nearest target
+    let nearest=null,minDist=Infinity;
+    targets.forEach(t=>{
+      if(!t.alive)return;
+      const d=Math.hypot(t.x-p.x,t.y-p.y);
+      if(d<minDist){minDist=d;nearest=t}
+    });
+
+    // Evade bullets
+    let evadeX=0,evadeY=0;
+    if(p.ai.evadeCd<=0){
+      bullets.forEach(b=>{
+        if(b.team===p.team)return;
+        const d=Math.hypot(b.x-p.x,b.y-p.y);
+        if(d<80){
+          const perpX=-(b.y-p.y),perpY=b.x-p.x;
+          const len=Math.hypot(perpX,perpY)||1;
+          evadeX+=perpX/len*2;evadeY+=perpY/len*2;
+          p.ai.evadeCd=10;
+        }
+      });
+    }
+
+    let moveX=0,moveY=0;
+    if(nearest){
+      const tx=nearest.x-p.x,ty=nearest.y-p.y;
+      const d=Math.hypot(tx,ty)||1;
+      const desiredDist=p.team==='usa'?200:150;
+      if(d>desiredDist+50){moveX=tx/d*0.8;moveY=ty/d*0.8}
+      else if(d<desiredDist-50){moveX=-tx/d*0.6;moveY=-ty/d*0.6}
+      else{moveX=ty/d*0.5;moveY=-tx/d*0.5} // Orbit
+      p.angle=Math.atan2(tx,-ty);
+      if(d<400)fire(p);
+    }else{
+      if(p.ai.changeCd<=0){p.ai.moveAngle=Math.random()*Math.PI*2;p.ai.changeCd=60}
+      moveX=Math.cos(p.ai.moveAngle)*0.5;moveY=Math.sin(p.ai.moveAngle)*0.5;
+    }
+
+    p.x+=(moveX+evadeX)*p.speed*0.5;
+    p.y+=(moveY+evadeY)*p.speed*0.5;
+    p.x=Math.max(-W,Math.min(W,p.x));
+    p.y=Math.max(-H*1.5,Math.min(H*0.5,p.y));
+  });
+}
+
+function updateBullets(){
+  bullets=bullets.filter(b=>{
+    b.x+=b.vx;b.y+=b.vy;b.life--;
+    if(b.life<=0||Math.abs(b.x)>W||Math.abs(b.y)>H*2)return false;
+    // Hit detection
+    const targets=b.team==='china'?enemies:allies;
+    if(b.team==='usa'&&player&&player.alive){
+      const d=Math.hypot(b.x-player.x,b.y-player.y);
+      if(d<20){player.hp-=b.dmg;spawnExplosion(b.x,b.y,5,'#f44');if(player.hp<=0){player.alive=false;chinaForces--;spawnExplosion(player.x,player.y,30,'#f80');showMsg('战机被击落！剩余兵力：'+chinaForces,2000);setTimeout(()=>{if(gameRunning)spawnPlayer()},1500)}return false}
+    }
+    for(let t of targets){
+      if(!t.alive)continue;
+      const d=Math.hypot(b.x-t.x,b.y-t.y);
+      if(d<18){
+        t.hp-=b.dmg;spawnExplosion(b.x,b.y,5,b.team==='china'?'#4ef':'#f44');
+        if(t.hp<=0){
+          t.alive=false;spawnExplosion(t.x,t.y,25,t.team==='usa'?'#4ef':'#f80');
+          if(t.team==='usa'){usaForces--;usaLost++;kills++;showMsg(`击落 ${PLANES[t.type].name}！ 剩余敌机：${usaForces}`,2000)}
+          else{chinaForces--;showMsg(`友军 ${PLANES[t.type].name} 被击落`,1500)}
+        }
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+function updateParticles(){
+  particles=particles.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=0.97;p.vy*=0.97;p.life--;return p.life>0});
+  explosions=explosions.filter(e=>{e.radius+=(e.maxRadius-e.radius)*0.2;e.life--;return e.life>0});
+}
+
+function updateCamera(){
+  if(player){
+    cameraX+=(player.x-cameraX)*0.08;
+    cameraY+=(player.y-cameraY)*0.08;
+  }
+}
+
+function updateHUD(){
+  document.getElementById('china-count').textContent=chinaForces;
+  document.getElementById('usa-count').textContent=usaForces;
+  document.getElementById('kills').textContent=kills;
+  document.getElementById('usa-lost').textContent=usaLost;
+  if(player){
+    const pct=Math.max(0,Math.round(player.hp/player.maxHp*100));
+    document.getElementById('player-hp').textContent=pct;
+    document.getElementById('player-hp').style.color=pct>50?'#0f0':pct>25?'#ff0':'#f00';
+  }
+}
+
+function checkWinLose(){
+  if(usaForces<=0&&enemies.filter(e=>e.alive).length===0){
+    gameRunning=false;
+    const go=document.getElementById('game-over');
+    go.style.display='flex';
+    document.getElementById('go-title').style.color='#0f0';
+    document.getElementById('go-title').textContent='🏆 胜利！';
+    document.getElementById('go-msg').textContent=`击落全部美军战机！击杀：${kills} | 剩余兵力：${chinaForces}`;
+  }
+  if(chinaForces<=0){
+    gameRunning=false;
+    const go=document.getElementById('game-over');
+    go.style.display='flex';
+    document.getElementById('go-title').style.color='#f00';
+    document.getElementById('go-title').textContent='💀 战败';
+    document.getElementById('go-msg').textContent=`兵力耗尽 | 击杀：${kills} | 敌方剩余：${usaForces}`;
+  }
+}
+
+// Draw background
+function drawBG(){
+  // Dark sky gradient
+  const grad=ctx.createLinearGradient(0,-H,0,H);
+  grad.addColorStop(0,'#0a0a1e');grad.addColorStop(0.5,'#0d1b2a');grad.addColorStop(1,'#1b2838');
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+
+  // Stars
+  ctx.save();ctx.translate(-cameraX*0.1,-cameraY*0.1);
+  stars.forEach(s=>{
+    s.b+=0.02;const a=0.3+Math.sin(s.b)*0.3;
+    ctx.fillStyle=`rgba(255,255,255,${a})`;
+    ctx.fillRect(s.x,s.y,s.s,s.s);
+  });
+  ctx.restore();
+}
+
+// Draw background fleet
+function drawFleet(){
+  // Show some background planes representing the massive fleet
+  ctx.save();ctx.globalAlpha=0.15;
+  for(let i=0;i<30;i++){
+    const px=((i*137+50)%1000-500)*2-cameraX*0.3;
+    const py=((i*89+20)%600-100)-cameraY*0.3;
+    drawJ20(px,py+i*0.1,0,0.4,'#f33');
+  }
+  ctx.restore();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  drawBG();
+  ctx.save();ctx.translate(W/2-cameraX,H/2-cameraY);
+  drawFleet();
+
+  // Draw explosions
+  explosions.forEach(e=>{
+    ctx.save();ctx.globalAlpha=e.life/e.maxLife*0.5;
+    const grad=ctx.createRadialGradient(e.x,e.y,0,e.x,e.y,e.radius);
+    grad.addColorStop(0,e.color);grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad;ctx.beginPath();ctx.arc(e.x,e.y,e.radius,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  });
+
+  // Draw particles
+  particles.forEach(p=>{
+    ctx.save();ctx.globalAlpha=p.life/p.maxLife;
+    ctx.fillStyle=p.color;ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+    ctx.restore();
+  });
+
+  // Draw bullets
+  bullets.forEach(b=>{
+    ctx.save();ctx.globalAlpha=0.9;
+    ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(b.x,b.y,2.5,0,Math.PI*2);ctx.fill();
+    // Trail
+    ctx.globalAlpha=0.3;ctx.beginPath();ctx.arc(b.x-b.vx*2,b.y-b.vy*2,1.5,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  });
+
+  // Draw planes
+  allies.forEach(p=>{if(p.alive)drawPlane(p)});
+  enemies.forEach(p=>{if(p.alive)drawPlane(p)});
+  if(player&&player.alive)drawPlane(player);
+
+  // Target indicator on nearest enemy
+  if(player&&player.alive){
+    let nearest=null,minD=Infinity;
+    enemies.forEach(e=>{if(e.alive){const d=Math.hypot(e.x-player.x,e.y-player.y);if(d<minD){minD=d;nearest=e}}});
+    if(nearest&&minD<500){
+      ctx.save();ctx.strokeStyle='rgba(255,0,0,0.5)';ctx.lineWidth=1;ctx.setLineDash([5,5]);
+      ctx.beginPath();ctx.arc(nearest.x,nearest.y,25+Math.sin(Date.now()/200)*3,0,Math.PI*2);ctx.stroke();
+      // Lock line
+      ctx.strokeStyle='rgba(255,0,0,0.15)';ctx.beginPath();ctx.moveTo(player.x,player.y);ctx.lineTo(nearest.x,nearest.y);ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  ctx.restore();
+
+  // Crosshair
+  ctx.save();ctx.strokeStyle='rgba(0,255,100,0.5)';ctx.lineWidth=1;
+  const mx=W/2,my=H/2;
+  ctx.beginPath();ctx.moveTo(mx-15,my);ctx.lineTo(mx-5,my);ctx.moveTo(mx+5,my);ctx.lineTo(mx+15,my);
+  ctx.moveTo(mx,my-15);ctx.lineTo(mx,my-5);ctx.moveTo(mx,my+5);ctx.lineTo(mx,my+15);ctx.stroke();
+  ctx.restore();
+}
+
+function gameLoop(){
+  if(!gameRunning)return;
+  updatePlayer();
+  updateAI(allies,[...enemies]);
+  updateAI(enemies,[player,...allies].filter(p=>p&&p.alive));
+  updateBullets();
+  updateParticles();
+  updateCamera();
+  updateHUD();
+  checkWinLose();
+
+  // Clean dead
+  allies=allies.filter(a=>a.alive);
+  enemies=enemies.filter(e=>e.alive);
+
+  // Spawn next wave
+  if(enemies.length===0&&usaForces>0){
+    setTimeout(()=>{if(gameRunning)spawnWave()},2000);
+  }
+
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function startGame(){
+  document.getElementById('start-screen').style.display='none';
+  gameStarted=true;gameRunning=true;
+  chinaForces=10000;usaForces=10;kills=0;usaLost=0;waveNum=0;
+  spawnPlayer();
+  spawnWave();
+  gameLoop();
+}
+
+// Controls
+document.addEventListener('keydown',e=>{
+  keys[e.key]=true;
+  if(e.key===' '){spacePressed=true;e.preventDefault()}
+  if(e.key==='1')selectPlane(0);
+  if(e.key==='2')selectPlane(1);
+});
+document.addEventListener('keyup',e=>{
+  keys[e.key]=false;
+  if(e.key===' ')spacePressed=false;
+});
+
+// Initial draw
+draw();
+</script>
+</body>
+</html>
