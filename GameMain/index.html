@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PinelliaGame - 游戏大厅</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <h1 class="header-title">🎮 PinelliaGame</h1>
+      <p class="header-subtitle">网页小游戏集合 — 选择一个开始玩吧！</p>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- 加载状态 -->
+    <div id="loading" class="state-message">
+      <div class="spinner"></div>
+      <p>正在加载游戏列表...</p>
+    </div>
+
+    <!-- 错误状态 -->
+    <div id="error" class="state-message hidden">
+      <div class="state-icon">⚠️</div>
+      <h2>加载失败</h2>
+      <p id="error-text"></p>
+      <button class="btn-retry" onclick="location.reload()">重试</button>
+    </div>
+
+    <!-- 空状态：还没有游戏 -->
+    <div id="empty" class="state-message hidden">
+      <div class="state-icon">📦</div>
+      <h2>还没有游戏</h2>
+      <p>游戏库为空，快去添加小游戏吧！</p>
+      <pre class="guide">
+📁 添加方式：
+  games/your-game/
+  ├── manifest.json    # 游戏信息
+  ├── index.html       # 游戏页面
+  └── ...
+
+然后更新 games/games-index.json 即可。
+      </pre>
+    </div>
+
+    <!-- 游戏卡片网格 -->
+    <div id="game-grid" class="game-grid hidden"></div>
+  </main>
+
+  <footer class="footer">
+    <p>PinelliaGame · <a href="https://github.com/BanXiaNa/PinelliaGame" target="_blank">GitHub</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

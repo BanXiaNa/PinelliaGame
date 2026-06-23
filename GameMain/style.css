@@ -1,0 +1,315 @@
+/* ===== PinelliaGame - 游戏大厅样式 ===== */
+
+/* --- Reset & Base --- */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #0f0f1a;
+  --bg-secondary: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-card-hover: #1c2a4a;
+  --text-primary: #e8e8f0;
+  --text-secondary: #9898b8;
+  --text-muted: #606080;
+  --accent: #7c5cff;
+  --accent-glow: rgba(124, 92, 255, 0.3);
+  --border: #2a2a4a;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --radius: 16px;
+  --radius-sm: 8px;
+  --transition: 0.3s ease;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+a:hover {
+  color: #9b7cff;
+}
+
+/* --- Header --- */
+.header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 48px 24px 36px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #7c5cff, #00d4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
+}
+
+.header-subtitle {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+}
+
+/* --- Main --- */
+.main {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 36px 24px 48px;
+}
+
+/* --- State Messages (Loading / Error / Empty) --- */
+.state-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 64px 24px;
+}
+
+.state-message.hidden {
+  display: none;
+}
+
+.state-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.state-message h2 {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.state-message p {
+  color: var(--text-secondary);
+  max-width: 480px;
+}
+
+/* Spinner */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Guide box (empty state) */
+.guide {
+  margin-top: 20px;
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-align: left;
+  line-height: 1.8;
+  max-width: 420px;
+  white-space: pre-wrap;
+}
+
+/* Retry button */
+.btn-retry {
+  margin-top: 20px;
+  padding: 10px 28px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background var(--transition), box-shadow var(--transition);
+}
+
+.btn-retry:hover {
+  background: #6a4ae6;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+/* --- Game Grid --- */
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.game-grid.hidden {
+  display: none;
+}
+
+/* --- Game Card --- */
+.game-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 20px 20px;
+  cursor: pointer;
+  transition: all var(--transition);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.game-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--card-color, var(--accent));
+  opacity: 0.8;
+}
+
+.game-card:hover {
+  transform: translateY(-4px);
+  background: var(--bg-card-hover);
+  border-color: var(--card-color, var(--accent));
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3), 0 0 20px var(--card-glow, var(--accent-glow));
+}
+
+.game-card:active {
+  transform: translateY(-1px);
+}
+
+/* Card icon */
+.card-icon {
+  font-size: 2.8rem;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+/* Card title */
+.card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+/* Card description */
+.card-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  flex: 1;
+  margin-bottom: 12px;
+}
+
+/* Card tags */
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.card-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  background: rgba(124, 92, 255, 0.12);
+  color: var(--text-secondary);
+  border: 1px solid rgba(124, 92, 255, 0.15);
+}
+
+/* Card click hint */
+.card-hint {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  font-size: 1.1rem;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.game-card:hover .card-hint {
+  opacity: 1;
+}
+
+/* --- Footer --- */
+.footer {
+  text-align: center;
+  padding: 20px 24px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .header {
+    padding: 36px 20px 28px;
+  }
+
+  .header-title {
+    font-size: 1.8rem;
+  }
+
+  .header-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .main {
+    padding: 24px 16px 36px;
+  }
+
+  .game-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+
+  .game-card {
+    padding: 18px 14px 14px;
+  }
+
+  .card-icon {
+    font-size: 2.2rem;
+  }
+
+  .card-title {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .game-grid {
+    grid-template-columns: 1fr;
+  }
+}
