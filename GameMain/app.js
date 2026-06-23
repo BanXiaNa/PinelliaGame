@@ -178,9 +178,34 @@ function showEmpty() {
 }
 
 /**
+ * 设置返回链接
+ * 在博客集成模式下 → 返回博客首页
+ * 独立运行模式下 → 返回项目根目录
+ */
+function setupBackLink() {
+  const link = document.getElementById('back-link');
+  const text = document.getElementById('back-text');
+  if (!link || !text) return;
+
+  // 判断是否在博客中（通过 URL 路径检测）
+  const isBlog = window.location.pathname.includes('/games/GameMain/');
+
+  if (isBlog) {
+    link.href = '/';
+    text.textContent = '返回博客';
+  } else {
+    link.href = '../';
+    text.textContent = '返回主页';
+  }
+
+  link.classList.remove('hidden');
+}
+
+/**
  * 初始化：加载游戏并渲染
  */
 async function init() {
+  setupBackLink();
   showLoading();
 
   try {

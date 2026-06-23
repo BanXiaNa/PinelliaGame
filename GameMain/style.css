@@ -52,6 +52,7 @@ a:hover {
 
 /* --- Header --- */
 .header {
+  position: relative;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   padding: 48px 24px 36px;
   text-align: center;
@@ -72,6 +73,32 @@ a:hover {
   margin-top: 8px;
   color: var(--text-secondary);
   font-size: 1.05rem;
+}
+
+/* 返回链接（博客集成 / 独立运行） */
+.back-link {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: all var(--transition);
+  border: 1px solid transparent;
+  z-index: 10;
+}
+
+.back-link:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.back-link.hidden {
+  display: none;
 }
 
 /* --- Main --- */
