@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>末日丧尸生存</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;cursor:none;font-family:'Microsoft YaHei',sans-serif}
+canvas{display:block;position:fixed;top:0;left:0}
+#ui{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
+#hud{position:absolute;top:12px;left:12px;color:#fff;font-size:15px;text-shadow:2px 2px 4px #000,0 0 8px rgba(0,0,0,0.8)}
+#hud div{margin:5px 0;background:rgba(0,0,0,0.4);padding:4px 10px;border-radius:6px;display:inline-block;margin-right:6px}
+#shop{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,15,25,0.97);border:2px solid #f44;border-radius:14px;padding:28px;color:#fff;pointer-events:all;min-width:440px;max-height:80vh;overflow-y:auto;box-shadow:0 0 40px rgba(255,0,0,0.3)}
+#shop h2{text-align:center;color:#f44;margin-bottom:18px;font-size:24px;text-shadow:0 0 10px #f00}
+.shop-item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;margin:8px 0;background:rgba(255,255,255,0.05);border-radius:10px;border:1px solid rgba(255,255,255,0.08);transition:all 0.2s}
+.shop-item:hover{background:rgba(255,50,50,0.12);border-color:#f44;transform:translateX(4px)}
+.shop-item .info{flex:1}
+.shop-item .info .name{font-weight:bold;color:#ff6;font-size:15px}
+.shop-item .info .desc{font-size:12px;color:#999;margin-top:3px}
+.shop-item .info .level{font-size:12px;color:#0f0;margin-top:2px}
+.shop-item button{background:linear-gradient(135deg,#c33,#a11);color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit;min-width:110px;transition:all 0.2s;box-shadow:0 2px 8px rgba(200,50,50,0.3)}
+.shop-item button:hover{background:linear-gradient(135deg,#f44,#c22);transform:scale(1.05)}
+.shop-item button:disabled{background:#444;cursor:not-allowed;transform:none;box-shadow:none}
+#shop-coins{text-align:center;color:#ff6;font-size:18px;margin-bottom:14px;text-shadow:0 0 8px rgba(255,255,0,0.5)}
+#start-btn{pointer-events:all;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#c33,#911);color:#fff;border:3px solid #f44;padding:24px 60px;font-size:30px;cursor:pointer;border-radius:14px;font-family:inherit;letter-spacing:6px;text-shadow:0 0 20px #f00;box-shadow:0 0 40px rgba(255,0,0,0.4);transition:all 0.3s;z-index:20}
+#start-btn:hover{background:linear-gradient(135deg,#f44,#c22);transform:translate(-50%,-50%) scale(1.05);box-shadow:0 0 60px rgba(255,0,0,0.6)}
+#game-over{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#fff;pointer-events:all;z-index:20}
+#game-over h1{font-size:64px;color:#f00;text-shadow:0 0 30px #f00,0 0 60px rgba(255,0,0,0.5);margin-bottom:10px}
+#game-over p{font-size:22px;margin:12px 0;color:#ccc}
+#game-over button{background:linear-gradient(135deg,#c33,#911);color:#fff;border:2px solid #f44;padding:16px 50px;font-size:22px;cursor:pointer;border-radius:10px;margin-top:20px;font-family:inherit;transition:all 0.2s}
+#game-over button:hover{background:linear-gradient(135deg,#f44,#c22);transform:scale(1.05)}
+#reload-bar{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);width:220px;height:14px;background:rgba(0,0,0,0.7);border-radius:7px;border:1px solid #666;display:none;overflow:hidden}
+#reload-fill{height:100%;background:linear-gradient(90deg,#ff0,#0f0);border-radius:7px;width:0%;transition:width 0.05s linear}
+#wave-announce{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);color:#f44;font-size:52px;font-weight:bold;text-shadow:0 0 30px #f00,0 0 60px rgba(255,0,0,0.4);display:none;pointer-events:none;letter-spacing:8px}
+#boss-hp{position:absolute;top:70px;left:50%;transform:translateX(-50%);width:420px;display:none}
+#boss-hp-bar{width:100%;height:18px;background:#222;border-radius:9px;border:1px solid #f44;overflow:hidden;box-shadow:0 0 10px rgba(255,0,0,0.3)}
+#boss-hp-fill{height:100%;background:linear-gradient(90deg,#f00,#f44);width:100%;transition:width 0.1s}
+#boss-name{color:#f44;text-align:center;font-size:16px;margin-bottom:5px;text-shadow:0 0 10px #f00}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui">
+  <div id="hud">
+    <div>❤️ <span id="hp">100</span>/<span id="maxhp">100</span></div>
+    <div>🔫 <span id="ammo">12</span>/<span id="mag">12</span></div>
+    <div>🌊 波次 <span id="wave">0</span></div>
+    <div>💀 击杀 <span id="kills">0</span></div>
+    <div>🪙 <span id="coins">0</span></div>
+    <div>🏃 <span id="spd-val">3.5</span> 💥 <span id="dmg-val">25</span></div>
+  </div>
+  <div id="boss-hp"><div id="boss-name">BOSS</div><div id="boss-hp-bar"><div id="boss-hp-fill"></div></div></div>
+  <div id="reload-bar"><div id="reload-fill"></div></div>
+  <div id="wave-announce"></div>
+  <div id="shop">
+    <h2>🛒 升级商店</h2>
+    <div id="shop-coins">🪙 金币: <span id="shop-coins-val">0</span></div>
+    <div id="shop-items"></div>
+    <div style="text-align:center;margin-top:18px">
+      <button onclick="closeShop()" style="background:linear-gradient(135deg,#0a0,#070);border:1px solid #0f0;padding:12px 36px;font-size:18px;border-radius:10px;color:#fff;cursor:pointer;font-family:inherit;box-shadow:0 0 15px rgba(0,255,0,0.3)">⚔️ 开始下一波</button>
+    </div>
+  </div>
+  <div id="game-over">
+    <h1>☠️ 游戏结束</h1>
+    <p>存活了 <span id="go-wave">0</span> 波</p>
+    <p>击杀: <span id="go-kills">0</span></p>
+    <button onclick="restartGame()">🔄 重新开始</button>
+  </div>
+</div>
+<button id="start-btn" onclick="startGame()">☠️ 开始末日求生</button>
+
+<script>
+// ==================== 初始化 ====================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0;
+
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ==================== 音效 ====================
+let audioCtx;
+function initAudio() {
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+}
+function playSound(freq, dur, type='square', vol=0.1) {
+  if (!audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.value = vol;
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
+function shootSound() { playSound(180,0.1,'sawtooth',0.15); playSound(80,0.15,'square',0.1); }
+function reloadSound() { playSound(600,0.05,'sine',0.08); setTimeout(()=>playSound(800,0.05,'sine',0.08),100); }
+function hitSound() { playSound(200,0.08,'sawtooth',0.06); }
+function killSound() { playSound(100,0.2,'sawtooth',0.12); playSound(60,0.3,'square',0.08); }
+function bossSound() { playSound(50,0.5,'sawtooth',0.2); playSound(40,0.6,'square',0.15); }
+function upgradeSound() { playSound(500,0.1,'sine',0.1); setTimeout(()=>playSound(700,0.1,'sine',0.1),80); setTimeout(()=>playSound(900,0.15,'sine',0.1),160); }
+function pickupSound() { playSound(800,0.08,'sine',0.06); }
+
+// ==================== 输入状态 ====================
+const keys = {};
+const mouse = { x: W/2, y: H/2, down: false };
+
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key.toLowerCase() === 'r' && gameRunning && !gamePaused) startReload();
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mousedown', e => { if (e.button === 0) mouse.down = true; });
+window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+// ==================== 游戏状态 ====================
+let gameRunning = false;
+let gamePaused = false;
+let tick = 0;
+
+let player, bullets, zombies, particles, drops;
+let camX = 0, camY = 0;
+let waveEnemies, waveSpawnTimer, waveActive, enemiesLeft, bossActive;
+
+// ==================== 玩家初始化 ====================
+function createPlayer() {
+  return {
+    x: 0, y: 0, r: 16, angle: 0,
+    hp: 100, maxHp: 100,
+    speed: 3.5, damage: 25, fireRate: 12, reloadTime: 60,
+    magSize: 12, ammo: 12, bulletSpeed: 12,
+    shootCD: 0, reloading: false, reloadTimer: 0,
+    kills: 0, coins: 0, wave: 0,
+    invTimer: 0, regenTimer: 0, regenRate: 120
+  };
+}
+
+function resetAll() {
+  player = createPlayer();
+  bullets = []; zombies = []; particles = []; drops = [];
+  waveEnemies = []; waveSpawnTimer = 0; waveActive = false;
+  enemiesLeft = 0; bossActive = false; tick = 0;
+  camX = 0; camY = 0;
+}
+
+// ==================== 升级系统 ====================
+const upgrades = [
+  {id:'damage',  name:'🔫 伤害',      desc:'增加子弹伤害',        baseCost:15, mult:1.4, getLv:()=>Math.round((player.damage-25)/10),       apply:()=>player.damage+=10},
+  {id:'speed',   name:'🏃 移动速度',   desc:'提高移动速度',        baseCost:20, mult:1.5, getLv:()=>Math.round((player.speed-3.5)*2),        apply:()=>player.speed+=0.5},
+  {id:'firerate',name:'⚡ 射速',       desc:'减少射击间隔',        baseCost:25, mult:1.5, getLv:()=>Math.round((12-player.fireRate)/1.5),     apply:()=>player.fireRate=Math.max(3,player.fireRate-1.5)},
+  {id:'maxhp',   name:'❤️ 最大生命',   desc:'增加最大生命值',      baseCost:18, mult:1.4, getLv:()=>Math.round((player.maxHp-100)/25),        apply:()=>{player.maxHp+=25;player.hp=player.maxHp}},
+  {id:'mag',     name:'📦 弹夹容量',   desc:'增加弹夹子弹数',      baseCost:22, mult:1.6, getLv:()=>Math.round((player.magSize-12)/2),        apply:()=>{player.magSize+=2;player.ammo=player.magSize}},
+  {id:'reload',  name:'🔄 换弹速度',   desc:'加快换弹速度',        baseCost:20, mult:1.5, getLv:()=>Math.round((60-player.reloadTime)/8),     apply:()=>player.reloadTime=Math.max(10,player.reloadTime-8)},
+  {id:'regen',   name:'💚 生命回复',   desc:'加快自动回血速度',    baseCost:30, mult:1.6, getLv:()=>Math.round((120-player.regenRate)/15),    apply:()=>player.regenRate=Math.max(15,player.regenRate-15)},
+  {id:'bulspd',  name:'💨 子弹速度',   desc:'子弹飞行更快',        baseCost:16, mult:1.3, getLv:()=>Math.round((player.bulletSpeed-12)/2),    apply:()=>player.bulletSpeed+=2},
+];
+
+function getCost(u) { return Math.floor(u.baseCost * Math.pow(u.mult, u.getLv())); }
+
+function buildShop() {
+  const c = document.getElementById('shop-items');
+  c.innerHTML = '';
+  upgrades.forEach(u => {
+    const cost = getCost(u), lv = u.getLv();
+    const d = document.createElement('div');
+    d.className = 'shop-item';
+    d.innerHTML = `<div class="info"><div class="name">${u.name}</div><div class="desc">${u.desc}</div><div class="level">Lv.${lv} → Lv.${lv+1}</div></div><button ${player.coins<cost?'disabled':''} onclick="buyUpg('${u.id}')">${cost} 🪙</button>`;
+    c.appendChild(d);
+  });
+  document.getElementById('shop-coins-val').textContent = player.coins;
+}
+
+window.buyUpg = function(id) {
+  const u = upgrades.find(x=>x.id===id);
+  if (!u) return;
+  const cost = getCost(u);
+  if (player.coins < cost) return;
+  player.coins -= cost;
+  u.apply();
+  upgradeSound();
+  buildShop();
+};
+
+function openShop() {
+  gamePaused = true;
+  document.getElementById('shop').style.display = 'block';
+  buildShop();
+}
+
+window.closeShop = function() {
+  gamePaused = false;
+  document.getElementById('shop').style.display = 'none';
+  nextWave();
+};
+
+// ==================== 波次系统 ====================
+function getWaveCfg(w) {
+  return {
+    count: Math.floor(5 + w*3 + w*w*0.2),
+    hpM: 1 + w*0.15,
+    spdM: 1 + w*0.03
+  };
+}
+
+function nextWave() {
+  player.wave++;
+  document.getElementById('wave').textContent = player.wave;
+  waveActive = true;
+  bossActive = false;
+
+  const cfg = getWaveCfg(player.wave);
+  waveEnemies = [];
+
+  for (let i = 0; i < cfg.count; i++)
+    waveEnemies.push({type:'normal', hp:40*cfg.hpM, speed:(1.2+Math.random()*0.5)*cfg.spdM, damage:8+player.wave, coins:2+Math.floor(player.wave*0.5)});
+
+  if (player.wave >= 3) {
+    const n = Math.floor(player.wave*0.8);
+    for (let i = 0; i < n; i++)
+      waveEnemies.push({type:'fast', hp:25*cfg.hpM, speed:(2.2+Math.random()*0.4)*cfg.spdM, damage:5+player.wave*0.5, coins:3+Math.floor(player.wave*0.3)});
+  }
+
+  if (player.wave >= 5) {
+    const n = Math.floor(player.wave*0.3);
+    for (let i = 0; i < n; i++)
+      waveEnemies.push({type:'tank', hp:150*cfg.hpM, speed:(0.7+Math.random()*0.2)*cfg.spdM, damage:20+player.wave, coins:5+player.wave});
+  }
+
+  enemiesLeft = waveEnemies.length + 1;
+  waveSpawnTimer = 0;
+
+  const el = document.getElementById('wave-announce');
+  el.textContent = `⚠️ 第 ${player.wave} 波 ⚠️`;
+  el.style.display = 'block';
+  setTimeout(()=>{ el.style.display='none'; }, 2000);
+}
+
+function getBossName(w) {
+  const names = ['尸王·腐朽','血肉傀儡','感染者首领','暗夜猎手','毒液暴君','骨刺巨人','噩梦行者','腐化之母','地狱守卫','末日审判者'];
+  return `${names[(w-1)%names.length]} Lv.${w}`;
+}
+
+function spawnZombie(cfg) {
+  const a = Math.random()*Math.PI*2, d = 500+Math.random()*300;
+  zombies.push({
+    x: player.x+Math.cos(a)*d, y: player.y+Math.sin(a)*d,
+    r: cfg.type==='tank'?24:cfg.type==='fast'?12:16,
+    hp:cfg.hp, maxHp:cfg.hp, speed:cfg.speed, damage:cfg.damage, coins:cfg.coins,
+    type:cfg.type, flash:0, atkCD:0, specialTimer:0
+  });
+}
+
+function spawnBoss() {
+  const w = player.wave, hp = 300+w*200+w*w*30;
+  const a = Math.random()*Math.PI*2, d = 500+Math.random()*200;
+  const boss = {
+    x:player.x+Math.cos(a)*d, y:player.y+Math.sin(a)*d,
+    r:36+Math.min(w,20), hp, maxHp:hp,
+    speed:0.8+w*0.05, damage:25+w*5, coins:30+w*10,
+    type:'boss', flash:0, atkCD:0,
+    name:getBossName(w), specialTimer:0
+  };
+  zombies.push(boss);
+  bossActive = true;
+  bossSound();
+  document.getElementById('boss-hp').style.display = 'block';
+  document.getElementById('boss-name').textContent = boss.name;
+
+  const el = document.getElementById('wave-announce');
+  el.textContent = `☠️ ${boss.name} ☠️`;
+  el.style.display = 'block';
+  setTimeout(()=>{ el.style.display='none'; }, 2500);
+}
+
+// ==================== 射击 ====================
+function shoot() {
+  player.ammo--;
+  player.shootCD = player.fireRate;
+  shootSound();
+
+  const sp = 0.05;
+  const a = player.angle + (Math.random()-0.5)*sp;
+  bullets.push({
+    x: player.x+Math.cos(a)*20, y: player.y+Math.sin(a)*20,
+    vx: Math.cos(a)*player.bulletSpeed, vy: Math.sin(a)*player.bulletSpeed,
+    r:4, damage:player.damage, life:80
+  });
+
+  for (let k=0;k<3;k++)
+    particles.push({
+      x:player.x+Math.cos(a)*22, y:player.y+Math.sin(a)*22,
+      vx:Math.cos(a+(Math.random()-0.5))*3, vy:Math.sin(a+(Math.random()-0.5))*3,
+      life:5, color:'#ff0', r:3
+    });
+
+  if (player.ammo <= 0) startReload();
+}
+
+function startReload() {
+  if (player.reloading || player.ammo === player.magSize) return;
+  player.reloading = true;
+  player.reloadTimer = 0;
+  reloadSound();
+}
+
+// ==================== 主更新循环 ====================
+function update() {
+  if (!gameRunning || gamePaused) return;
+  tick++;
+
+  // === 玩家移动 ===
+  let mx = 0, my = 0;
+  if (keys['w'] || keys['arrowup'])    my = -1;
+  if (keys['s'] || keys['arrowdown'])  my = 1;
+  if (keys['a'] || keys['arrowleft'])  mx = -1;
+  if (keys['d'] || keys['arrowright']) mx = 1;
+  if (mx && my) { mx *= 0.7071; my *= 0.7071; }
+  player.x += mx * player.speed;
+  player.y += my * player.speed;
+
+  // === 相机跟随（平滑） ===
+  const targetCX = player.x - W/2;
+  const targetCY = player.y - H/2;
+  camX += (targetCX - camX) * 0.15;
+  camY += (targetCY - camY) * 0.15;
+
+  // === 玩家朝向鼠标 ===
+  player.angle = Math.atan2(mouse.y - H/2, mouse.x - W/2);
+
+  // === 射击 ===
+  if (player.shootCD > 0) player.shootCD--;
+  if (mouse.down && player.shootCD <= 0 && !player.reloading && player.ammo > 0) shoot();
+
+  // === 换弹 ===
+  if (player.reloading) {
+    player.reloadTimer++;
+    document.getElementById('reload-bar').style.display = 'block';
+    document.getElementById('reload-fill').style.width = (player.reloadTimer/player.reloadTime*100)+'%';
+    if (player.reloadTimer >= player.reloadTime) {
+      player.ammo = player.magSize;
+      player.reloading = false;
+      player.reloadTimer = 0;
+      document.getElementById('reload-bar').style.display = 'none';
+    }
+  }
+
+  // === 回血 ===
+  player.regenTimer++;
+  if (player.regenTimer >= player.regenRate && player.hp < player.maxHp) {
+    player.hp = Math.min(player.maxHp, player.hp+1);
+    player.regenTimer = 0;
+  }
+  if (player.invTimer > 0) player.invTimer--;
+
+  // === 子弹更新 ===
+  for (let i = bullets.length-1; i >= 0; i--) {
+    const b = bullets[i];
+    b.x += b.vx; b.y += b.vy; b.life--;
+    if (b.life <= 0) { bullets.splice(i,1); continue; }
+
+    let hit = false;
+    for (let j = zombies.length-1; j >= 0; j--) {
+      const z = zombies[j];
+      const dx = b.x-z.x, dy = b.y-z.y;
+      if (dx*dx+dy*dy < (b.r+z.r)*(b.r+z.r)) {
+        z.hp -= b.damage;
+        z.flash = 6;
+        hit = true;
+        hitSound();
+
+        for (let k=0;k<4;k++)
+          particles.push({x:b.x,y:b.y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:15,color:z.type==='boss'?'#f0f':'#f44',r:3});
+
+        if (z.hp <= 0) {
+          killSound();
+          player.kills++;
+          player.coins += z.coins;
+          for (let k=0;k<12;k++)
+            particles.push({x:z.x,y:z.y,vx:(Math.random()-0.5)*6,vy:(Math.random()-0.5)*6,life:25,color:z.type==='boss'?'#f0f':'#a33',r:4+Math.random()*3});
+
+          const dropCount = Math.min(z.coins, 8);
+          for (let k=0;k<dropCount;k++)
+            drops.push({x:z.x+(Math.random()-0.5)*20,y:z.y+(Math.random()-0.5)*20,r:5,life:300,type:'coin',value:Math.ceil(z.coins/dropCount)});
+
+          if (z.type === 'boss') {
+            bossActive = false;
+            document.getElementById('boss-hp').style.display = 'none';
+            for (let k=0;k<30;k++)
+              particles.push({x:z.x,y:z.y,vx:(Math.random()-0.5)*10,vy:(Math.random()-0.5)*10,life:40,color:['#f00','#f80','#ff0','#f0f'][k%4],r:5+Math.random()*5});
+          }
+          zombies.splice(j,1);
+          enemiesLeft--;
+        }
+        break;
+      }
+    }
+    if (hit) bullets.splice(i,1);
+  }
+
+  // === 丧尸更新 ===
+  for (let i = zombies.length-1; i >= 0; i--) {
+    const z = zombies[i];
+    if (z.flash > 0) z.flash--;
+    if (z.atkCD > 0) z.atkCD--;
+
+    const dx = player.x-z.x, dy = player.y-z.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    if (dist > z.r+player.r) {
+      z.x += (dx/dist)*z.speed;
+      z.y += (dy/dist)*z.speed;
+    }
+
+    if (dist < z.r+player.r+5 && z.atkCD <= 0 && player.invTimer <= 0) {
+      player.hp -= z.damage;
+      player.invTimer = 15;
+      z.atkCD = 30;
+      hitSound();
+      for (let k=0;k<6;k++)
+        particles.push({x:player.x,y:player.y,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,life:20,color:'#f00',r:3});
+      if (player.hp <= 0) { gameOver(); return; }
+    }
+
+    if (z.type === 'boss') {
+      z.specialTimer++;
+      document.getElementById('boss-hp-fill').style.width = (z.hp/z.maxHp*100)+'%';
+      if (z.specialTimer % 300 === 0 && waveActive) {
+        for (let k=0;k<3;k++) {
+          const sa = Math.random()*Math.PI*2;
+          zombies.push({
+            x:z.x+Math.cos(sa)*60, y:z.y+Math.sin(sa)*60,
+            r:14, hp:30, maxHp:30, speed:2, damage:5+player.wave, coins:2,
+            type:'normal', flash:0, atkCD:0, specialTimer:0
+          });
+        }
+      }
+    }
+  }
+
+  // === 拾取掉落 ===
+  for (let i = drops.length-1; i >= 0; i--) {
+    const d = drops[i];
+    d.life--;
+    if (d.life <= 0) { drops.splice(i,1); continue; }
+    const dx = player.x-d.x, dy = player.y-d.y;
+    if (dx*dx+dy*dy < 900) {
+      if (d.type === 'coin') {
+        player.coins += d.value;
+        pickupSound();
+      }
+      drops.splice(i,1);
+    }
+  }
+
+  // === 粒子更新 ===
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.95; p.vy *= 0.95;
+    if (--p.life <= 0) particles.splice(i,1);
+  }
+
+  // === 波次生成 ===
+  if (waveActive && waveEnemies.length > 0) {
+    waveSpawnTimer++;
+    const rate = Math.max(10, 40 - player.wave);
+    if (waveSpawnTimer >= rate) {
+      waveSpawnTimer = 0;
+      spawnZombie(waveEnemies.pop());
+    }
+  }
+
+  // 当普通丧尸快刷完时生成BOSS
+  if (waveActive && waveEnemies.length === 0 && !bossActive && enemiesLeft > 0 && zombies.length <= 3) {
+    spawnBoss();
+  }
+
+  // === 波次结束检测 ===
+  if (waveActive && waveEnemies.length === 0 && zombies.length === 0 && enemiesLeft <= 0) {
+    waveActive = false;
+    setTimeout(() => openShop(), 600);
+  }
+
+  // === 更新HUD ===
+  document.getElementById('hp').textContent = Math.max(0, Math.ceil(player.hp));
+  document.getElementById('maxhp').textContent = player.maxHp;
+  document.getElementById('ammo').textContent = player.ammo;
+  document.getElementById('mag').textContent = player.magSize;
+  document.getElementById('coins').textContent = player.coins;
+  document.getElementById('kills').textContent = player.kills;
+  document.getElementById('spd-val').textContent = player.speed.toFixed(1);
+  document.getElementById('dmg-val').textContent = Math.round(player.damage);
+}
+
+// ==================== 绘制 ====================
+function draw() {
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(Math.round(-camX), Math.round(-camY));
+
+  // 网格地面
+  const gs = 60;
+  const sx = Math.floor(camX/gs)*gs;
+  const sy = Math.floor(camY/gs)*gs;
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (let gx = sx; gx < camX+W+gs; gx += gs) {
+    ctx.beginPath(); ctx.moveTo(gx, camY); ctx.lineTo(gx, camY+H); ctx.stroke();
+  }
+  for (let gy = sy; gy < camY+H+gs; gy += gs) {
+    ctx.beginPath(); ctx.moveTo(camX, gy); ctx.lineTo(camX+W, gy); ctx.stroke();
+  }
+
+  // 掉落物
+  drops.forEach(d => {
+    ctx.save();
+    ctx.globalAlpha = d.life < 60 ? d.life/60 : 1;
+    ctx.fillStyle = '#ff0';
+    ctx.shadowColor = '#ff0'; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#aa0'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('$', d.x, d.y+3);
+    ctx.restore();
+  });
+
+  // 子弹
+  ctx.shadowColor = '#ff0'; ctx.shadowBlur = 8;
+  ctx.fillStyle = '#ff0';
+  bullets.forEach(b => {
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+
+  // 丧尸
+  zombies.forEach(z => {
+    ctx.save();
+    if (z.flash > 0) {
+      ctx.fillStyle = '#fff';
+    } else if (z.type === 'boss') {
+      ctx.fillStyle = '#a0f';
+    } else if (z.type === 'fast') {
+      ctx.fillStyle = '#fa0';
+    } else if (z.type === 'tank') {
+      ctx.fillStyle = '#556';
+    } else {
+      ctx.fillStyle = '#4a4';
+    }
+
+    ctx.shadowColor = z.type==='boss' ? '#f0f' : '#000';
+    ctx.shadowBlur = z.type==='boss' ? 20 : 6;
+    ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 眼睛
+    const ea = Math.atan2(player.y-z.y, player.x-z.x);
+    ctx.fillStyle = z.type==='boss' ? '#f00' : '#f33';
+    const ed = z.r*0.4, es = z.r*0.2;
+    ctx.beginPath();
+    ctx.arc(z.x+Math.cos(ea-0.3)*ed, z.y+Math.sin(ea-0.3)*ed, es, 0, Math.PI*2);
+    ctx.arc(z.x+Math.cos(ea+0.3)*ed, z.y+Math.sin(ea+0.3)*ed, es, 0, Math.PI*2);
+    ctx.fill();
+
+    // 血条
+    if (z.type === 'boss' || z.type === 'tank') {
+      const bw = z.r*2, bh = 4, by = z.r+8;
+      ctx.fillStyle = '#333';
+      ctx.fillRect(z.x-bw/2, z.y-by, bw, bh);
+      ctx.fillStyle = z.type==='boss' ? '#f0f' : '#f44';
+      ctx.fillRect(z.x-bw/2, z.y-by, bw*(z.hp/z.maxHp), bh);
+    }
+
+    // BOSS光环
+    if (z.type === 'boss') {
+      ctx.strokeStyle = `rgba(255,0,255,${0.3+Math.sin(tick*0.1)*0.2})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r+12, 0, Math.PI*2); ctx.stroke();
+    }
+
+    ctx.restore();
+  });
+
+  // 玩家
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.rotate(player.angle);
+  if (player.invTimer > 0 && player.invTimer%4 < 2) ctx.globalAlpha = 0.4;
+
+  ctx.fillStyle = '#4af';
+  ctx.shadowColor = '#4af'; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.arc(0, 0, player.r, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = '#888';
+  ctx.fillRect(8, -3, 18, 6);
+  ctx.fillStyle = '#666';
+  ctx.fillRect(22, -4, 4, 8);
+  ctx.restore();
+
+  // 粒子
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life/30);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r*(p.life/25), 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+
+  ctx.restore();
+
+  // 准星
+  const cx = mouse.x, cy = mouse.y;
+  ctx.strokeStyle = 'rgba(255,60,60,0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx-14,cy); ctx.lineTo(cx-5,cy);
+  ctx.moveTo(cx+5,cy); ctx.lineTo(cx+14,cy);
+  ctx.moveTo(cx,cy-14); ctx.lineTo(cx,cy-5);
+  ctx.moveTo(cx,cy+5); ctx.lineTo(cx,cy+14);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,60,60,0.9)';
+  ctx.fill();
+}
+
+// ==================== 游戏控制 ====================
+function gameOver() {
+  gameRunning = false;
+  document.getElementById('go-wave').textContent = player.wave;
+  document.getElementById('go-kills').textContent = player.kills;
+  document.getElementById('game-over').style.display = 'block';
+  document.getElementById('boss-hp').style.display = 'none';
+}
+
+window.restartGame = function() {
+  document.getElementById('game-over').style.display = 'none';
+  resetAll();
+  startGame();
+};
+
+window.startGame = function() {
+  if (!audioCtx) initAudio();
+  document.getElementById('start-btn').style.display = 'none';
+  document.getElementById('game-over').style.display = 'none';
+  document.getElementById('shop').style.display = 'none';
+  resetAll();
+  gameRunning = true;
+  gamePaused = false;
+  nextWave();
+};
+
+// ==================== 游戏主循环 ====================
+function gameLoop() {
+  update();
+  if (gameRunning) draw();
+  requestAnimationFrame(gameLoop);
+}
+gameLoop();
+</script>
+</body>
+</html>

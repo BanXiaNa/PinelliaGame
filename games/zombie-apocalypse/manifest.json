@@ -1,0 +1,8 @@
+{
+  "name": "末日丧尸生存",
+  "description": "在丧尸末日中努力生存下去",
+  "icon": "🧟‍♂️",
+  "color": "#8b0000",
+  "path": "games/zombie-apocalypse",
+  "tags": ["生存", "射击"]
+}
