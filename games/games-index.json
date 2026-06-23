@@ -14,5 +14,13 @@
     "color": "#ff69b4",
     "path": "games/makeup",
     "tags": ["装扮", "休闲"]
+  },
+  {
+    "name": "末日求生3D",
+    "description": "3D末日生存射击游戏，在丧尸群中存活下去",
+    "icon": "🧟",
+    "color": "#ff3333",
+    "path": "games/zombie-survival-3d",
+    "tags": ["3D", "射击", "生存"]
   }
 ]
