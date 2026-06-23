@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔨 打地鼠</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #2d5016 0%, #4a7c26 40%, #6b8f3c 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  h1 {
+    font-size: 2.8rem;
+    color: #ffe066;
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+    margin-bottom: 10px;
+    letter-spacing: 6px;
+  }
+
+  .score-board {
+    display: flex;
+    gap: 40px;
+    margin: 12px 0 20px;
+  }
+
+  .score-item {
+    background: rgba(0,0,0,0.35);
+    padding: 8px 28px;
+    border-radius: 30px;
+    color: #fff;
+    font-size: 1.2rem;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  .score-item span {
+    font-weight: bold;
+    color: #ffe066;
+    font-size: 1.4rem;
+  }
+
+  /* 九宫格 */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 150px);
+    grid-template-rows: repeat(3, 150px);
+    gap: 16px;
+    margin: 10px 0 24px;
+  }
+
+  .hole {
+    position: relative;
+    background: radial-gradient(ellipse at center bottom, #3d2b1a 0%, #2a1d10 60%, transparent 70%);
+    border-radius: 50% / 35%;
+    cursor: pointer;
+    overflow: hidden;
+    border: 3px solid #1a1200;
+    box-shadow: inset 0 10px 30px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.3);
+    transition: transform 0.08s;
+  }
+
+  .hole:active { transform: scale(0.95); }
+
+  /* 地鼠 */
+  .mole {
+    position: absolute;
+    bottom: -100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 80%;
+    transition: bottom 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .mole.show {
+    bottom: 8%;
+    pointer-events: auto;
+  }
+
+  .mole-body {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  /* 地鼠 SVG 绘制 */
+  .mole-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* 打中效果 */
+  .mole.hit .mole-svg { filter: brightness(0.3) saturate(0); }
+
+  .hit-text {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.5rem;
+    color: #ff4444;
+    font-weight: bold;
+    opacity: 0;
+    pointer-events: none;
+    text-shadow: 0 0 8px rgba(255,0,0,0.6);
+  }
+
+  .hole.hit-anim .hit-text {
+    animation: hitPop 0.5s ease-out forwards;
+  }
+
+  @keyframes hitPop {
+    0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-40px) scale(1.4); }
+  }
+
+  /* 草地装饰 */
+  .grass {
+    position: absolute;
+    bottom: -5px;
+    width: 100%;
+    height: 20px;
+    z-index: 2;
+  }
+
+  .grass-blade {
+    position: absolute;
+    bottom: 0;
+    width: 6px;
+    background: linear-gradient(to top, #3a6b1e, #7ab648);
+    border-radius: 3px 3px 0 0;
+    transform-origin: bottom center;
+  }
+
+  /* 按钮 */
+  .btn {
+    padding: 14px 50px;
+    font-size: 1.3rem;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: bold;
+    letter-spacing: 3px;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .btn-start {
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(247, 147, 30, 0.4);
+  }
+
+  .btn-start:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(247, 147, 30, 0.6);
+  }
+
+  .btn:active { transform: translateY(1px); }
+
+  /* 游戏结束 */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+
+  .overlay.show { display: flex; }
+
+  .overlay h2 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    color: #ffe066;
+  }
+
+  .overlay p {
+    font-size: 1.3rem;
+    margin-bottom: 24px;
+  }
+
+  /* 连击 */
+  .combo {
+    position: fixed;
+    top: 20px;
+    right: 30px;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #ff6b35;
+    opacity: 0;
+    transition: opacity 0.3s;
+    text-shadow: 0 0 15px rgba(255, 107, 53, 0.6);
+  }
+
+  .combo.show { opacity: 1; }
+
+  /* 倒计时 */
+  .timer-bar {
+    width: 466px;
+    height: 8px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+    margin-bottom: 6px;
+    overflow: hidden;
+  }
+
+  .timer-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff4444, #ffe066, #44ff44);
+    border-radius: 4px;
+    width: 100%;
+    transition: width 0.1s linear;
+  }
+
+  /* 难度指示 */
+  .difficulty {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+  }
+
+  /* 震动效果 */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+
+  .hole.shake { animation: shake 0.15s ease-in-out; }
+
+  /* 粒子 */
+  .particle {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+<h1>🔨 打地鼠</h1>
+
+<div class="score-board">
+  <div class="score-item">得分: <span id="score">0</span></div>
+  <div class="score-item">时间: <span id="time">30</span>s</div>
+  <div class="score-item">连击: <span id="comboCount">0</span></div>
+</div>
+
+<div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+<div class="difficulty" id="difficulty"></div>
+
+<div class="grid" id="grid"></div>
+
+<button class="btn btn-start" id="startBtn" onclick="startGame()">开始游戏</button>
+
+<div class="combo" id="combo"></div>
+
+<div class="overlay" id="overlay">
+  <h2>⏰ 时间到！</h2>
+  <p>最终得分: <span id="finalScore" style="color:#ffe066;font-size:1.8rem;font-weight:bold;">0</span></p>
+  <p id="rankText"></p>
+  <button class="btn btn-start" onclick="startGame()">再来一局</button>
+</div>
+
+<script>
+// ========== 游戏配置 ==========
+const CONFIG = {
+  gameTime: 30,           // 游戏时长（秒）
+  moleMinShow: 600,       // 地鼠最短显示时间（ms）
+  moleMaxShow: 1400,      // 地鼠最长显示时间（ms）
+  spawnIntervalStart: 1200, // 初始生成间隔
+  spawnIntervalMin: 350,    // 最快生成间隔
+  doubleChance: 0.25,      // 双地鼠概率
+  goldenChance: 0.08,      // 金色地鼠概率
+  comboWindow: 1500,       // 连击窗口（ms）
+};
+
+// ========== 状态 ==========
+let score = 0;
+let timeLeft = CONFIG.gameTime;
+let comboCount = 0;
+let lastHitTime = 0;
+let gameRunning = false;
+let timerInterval = null;
+let spawnTimeout = null;
+let activeMoles = new Set();
+
+// ========== 初始化九宫格 ==========
+const grid = document.getElementById('grid');
+const holes = [];
+
+for (let i = 0; i < 9; i++) {
+  const hole = document.createElement('div');
+  hole.className = 'hole';
+  hole.dataset.index = i;
+
+  // 草装饰
+  const grass = document.createElement('div');
+  grass.className = 'grass';
+  for (let g = 0; g < 5; g++) {
+    const blade = document.createElement('div');
+    blade.className = 'grass-blade';
+    blade.style.left = (10 + g * 20 + Math.random() * 10) + '%';
+    blade.style.height = (12 + Math.random() * 10) + 'px';
+    blade.style.transform = `rotate(${(Math.random() - 0.5) * 30}deg)`;
+    grass.appendChild(blade);
+  }
+  hole.appendChild(grass);
+
+  // 地鼠
+  const mole = document.createElement('div');
+  mole.className = 'mole';
+
+  const moleBody = document.createElement('div');
+  moleBody.className = 'mole-body';
+
+  // SVG 地鼠
+  const isGolden = false;
+  moleBody.innerHTML = getMoleSVG(false);
+  mole.appendChild(moleBody);
+
+  // 打中文字
+  const hitText = document.createElement('div');
+  hitText.className = 'hit-text';
+  hitText.textContent = '+10';
+  hole.appendChild(hitText);
+
+  hole.appendChild(mole);
+  grid.appendChild(hole);
+  holes.push({ element: hole, mole, moleBody, hitText, active: false, golden: false, hitTimeout: null });
+}
+
+// ========== SVG 地鼠绘制 ==========
+function getMoleSVG(golden) {
+  const bodyColor = golden ? '#f0a030' : '#8B6914';
+  const bellyColor = golden ? '#ffe066' : '#c4a35a';
+  const noseColor = '#ff9999';
+  const eyeColor = '#222';
+  return `
+    <svg class="mole-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- 身体 -->
+      <ellipse cx="50" cy="70" rx="35" ry="30" fill="${bodyColor}"/>
+      <!-- 肚子 -->
+      <ellipse cx="50" cy="75" rx="22" ry="20" fill="${bellyColor}"/>
+      <!-- 头 -->
+      <circle cx="50" cy="38" r="26" fill="${bodyColor}"/>
+      <!-- 耳朵 -->
+      <circle cx="28" cy="22" r="10" fill="${bodyColor}"/>
+      <circle cx="28" cy="22" r="6" fill="${noseColor}"/>
+      <circle cx="72" cy="22" r="10" fill="${bodyColor}"/>
+      <circle cx="72" cy="22" r="6" fill="${noseColor}"/>
+      <!-- 脸部浅色 -->
+      <ellipse cx="50" cy="42" rx="18" ry="14" fill="${bellyColor}"/>
+      <!-- 眼睛 -->
+      <circle cx="40" cy="34" r="5" fill="#fff"/>
+      <circle cx="60" cy="34" r="5" fill="#fff"/>
+      <circle cx="41" cy="34" r="3" fill="${eyeColor}"/>
+      <circle cx="61" cy="34" r="3" fill="${eyeColor}"/>
+      <!-- 眼睛高光 -->
+      <circle cx="42.5" cy="32.5" r="1.2" fill="#fff"/>
+      <circle cx="62.5" cy="32.5" r="1.2" fill="#fff"/>
+      <!-- 鼻子 -->
+      <ellipse cx="50" cy="42" rx="5" ry="3.5" fill="${noseColor}"/>
+      <!-- 嘴巴 -->
+      <path d="M45 47 Q50 52 55 47" stroke="#6b4400" stroke-width="1.5" fill="none"/>
+      <!-- 胡须 -->
+      <line x1="30" y1="42" x2="15" y2="38" stroke="#6b4400" stroke-width="1"/>
+      <line x1="30" y1="45" x2="14" y2="46" stroke="#6b4400" stroke-width="1"/>
+      <line x1="70" y1="42" x2="85" y2="38" stroke="#6b4400" stroke-width="1"/>
+      <line x1="70" y1="45" x2="86" y2="46" stroke="#6b4400" stroke-width="1"/>
+      ${golden ? '<text x="50" y="16" text-anchor="middle" font-size="14" fill="#ffd700">⭐</text>' : ''}
+    </svg>`;
+}
+
+// ========== 获取当前生成间隔（随时间加快）==========
+function getSpawnInterval() {
+  const elapsed = CONFIG.gameTime - timeLeft;
+  const progress = elapsed / CONFIG.gameTime;
+  return Math.max(
+    CONFIG.spawnIntervalMin,
+    CONFIG.spawnIntervalStart - (CONFIG.spawnIntervalStart - CONFIG.spawnIntervalMin) * progress
+  );
+}
+
+// ========== 获取地鼠显示时长（随时间缩短）==========
+function getShowDuration() {
+  const elapsed = CONFIG.gameTime - timeLeft;
+  const progress = elapsed / CONFIG.gameTime;
+  const min = CONFIG.moleMinShow;
+  const max = CONFIG.moleMaxShow;
+  return Math.max(min, max - (max - min) * progress * 0.7);
+}
+
+// ========== 生成地鼠 ==========
+function spawnMole() {
+  if (!gameRunning) return;
+
+  // 找空位
+  const available = holes.filter((h, i) => !activeMoles.has(i));
+  if (available.length === 0) { scheduleNext(); return; }
+
+  // 随机选一个洞
+  const idx = holes.indexOf(available[Math.floor(Math.random() * available.length)]);
+
+  // 是否金色地鼠
+  const isGolden = Math.random() < CONFIG.goldenChance;
+
+  showMole(idx, isGolden);
+
+  // 双地鼠
+  if (Math.random() < CONFIG.doubleChance && available.length > 1) {
+    const remaining = available.filter((h, i) => holes.indexOf(h) !== idx);
+    if (remaining.length > 0) {
+      const idx2 = holes.indexOf(remaining[Math.floor(Math.random() * remaining.length)]);
+      const isGolden2 = Math.random() < CONFIG.goldenChance;
+      setTimeout(() => showMole(idx2, isGolden2), 100 + Math.random() * 200);
+    }
+  }
+
+  scheduleNext();
+}
+
+function scheduleNext() {
+  if (!gameRunning) return;
+  const interval = getSpawnInterval();
+  spawnTimeout = setTimeout(spawnMole, interval + Math.random() * 200);
+}
+
+// ========== 显示地鼠 ==========
+function showMole(idx, golden = false) {
+  const hole = holes[idx];
+  if (hole.active) return;
+
+  hole.active = true;
+  hole.golden = golden;
+  activeMoles.add(idx);
+
+  // 设置外观
+  hole.moleBody.innerHTML = getMoleSVG(golden);
+  hole.hitText.textContent = golden ? '+30' : '+10';
+  hole.hitText.style.color = golden ? '#ffd700' : '#ff4444';
+
+  // 钻出
+  requestAnimationFrame(() => {
+    hole.mole.classList.add('show');
+  });
+
+  // 一段时间后自动躲回
+  const duration = getShowDuration() + (golden ? -200 : 0); // 金色地鼠更快
+  hole.hitTimeout = setTimeout(() => {
+    if (hole.active && !hole.element.classList.contains('hit-anim')) {
+      hideMole(idx, false);
+      // 漏打重置连击
+      comboCount = 0;
+      updateComboDisplay();
+    }
+  }, Math.max(400, duration));
+}
+
+// ========== 隐藏地鼠 ==========
+function hideMole(idx, hit) {
+  const hole = holes[idx];
+  hole.mole.classList.remove('show');
+  hole.active = false;
+  activeMoles.delete(idx);
+
+  if (hole.hitTimeout) {
+    clearTimeout(hole.hitTimeout);
+    hole.hitTimeout = null;
+  }
+
+  // 重置状态
+  setTimeout(() => {
+    hole.element.classList.remove('hit-anim', 'shake');
+    hole.mole.classList.remove('hit');
+  }, 300);
+}
+
+// ========== 打地鼠 ==========
+function whackMole(idx) {
+  const hole = holes[idx];
+  if (!hole.active || hole.element.classList.contains('hit-anim')) return;
+
+  // 打中！
+  hole.element.classList.add('hit-anim', 'shake');
+  hole.mole.classList.add('hit');
+
+  const now = Date.now();
+  const points = hole.golden ? 30 : 10;
+
+  // 连击判断
+  if (now - lastHitTime < CONFIG.comboWindow) {
+    comboCount++;
+  } else {
+    comboCount = 1;
+  }
+  lastHitTime = now;
+
+  // 连击加分
+  const comboBonus = Math.floor(comboCount / 3) * 5;
+  const totalPoints = points + comboBonus;
+
+  score += totalPoints;
+  hole.hitText.textContent = comboBonus > 0 ? `+${totalPoints} 连击x${comboCount}` : `+${totalPoints}`;
+
+  updateScore();
+  updateComboDisplay();
+  spawnParticles(hole.element, hole.golden);
+
+  // 短暂显示后隐藏
+  setTimeout(() => hideMole(idx, true), 250);
+}
+
+// ========== 粒子效果 ==========
+function spawnParticles(element, golden) {
+  const rect = element.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 3;
+
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 4 + Math.random() * 6;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.background = golden
+      ? `hsl(${40 + Math.random() * 20}, 100%, ${60 + Math.random() * 20}%)`
+      : `hsl(${Math.random() * 60}, 80%, ${50 + Math.random() * 30}%)`;
+    p.style.left = cx + 'px';
+    p.style.top = cy + 'px';
+
+    document.body.appendChild(p);
+
+    const angle = (Math.PI * 2 * i) / 8 + Math.random() * 0.5;
+    const dist = 40 + Math.random() * 60;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist - 20;
+
+    p.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+    ], { duration: 400 + Math.random() * 200, easing: 'ease-out' });
+
+    setTimeout(() => p.remove(), 600);
+  }
+}
+
+// ========== 更新显示 ==========
+function updateScore() {
+  document.getElementById('score').textContent = score;
+}
+
+function updateComboDisplay() {
+  document.getElementById('comboCount').textContent = comboCount;
+  const comboEl = document.getElementById('combo');
+  if (comboCount >= 3) {
+    comboEl.textContent = `🔥 ${comboCount} 连击!`;
+    comboEl.classList.add('show');
+  } else {
+    comboEl.classList.remove('show');
+  }
+}
+
+function updateTimer() {
+  document.getElementById('time').textContent = timeLeft;
+  document.getElementById('timerFill').style.width = (timeLeft / CONFIG.gameTime * 100) + '%';
+
+  // 难度提示
+  const elapsed = CONFIG.gameTime - timeLeft;
+  const progress = elapsed / CONFIG.gameTime;
+  let diff = '😊 简单';
+  if (progress > 0.7) diff = '😈 地狱';
+  else if (progress > 0.5) diff = '😤 困难';
+  else if (progress > 0.3) diff = '😐 普通';
+  document.getElementById('difficulty').textContent = diff;
+}
+
+// ========== 开始游戏 ==========
+function startGame() {
+  // 重置
+  score = 0;
+  timeLeft = CONFIG.gameTime;
+  comboCount = 0;
+  lastHitTime = 0;
+  activeMoles.clear();
+  gameRunning = true;
+
+  updateScore();
+  updateComboDisplay();
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('startBtn').style.display = 'none';
+
+  // 清除所有地鼠
+  holes.forEach((h, i) => hideMole(i, false));
+
+  // 计时
+  updateTimer();
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimer();
+    if (timeLeft <= 0) endGame();
+  }, 1000);
+
+  // 开始生成
+  setTimeout(spawnMole, 500);
+}
+
+// ========== 结束游戏 ==========
+function endGame() {
+  gameRunning = false;
+  clearInterval(timerInterval);
+  clearTimeout(spawnTimeout);
+
+  // 隐藏所有地鼠
+  activeMoles.forEach(idx => hideMole(idx, false));
+
+  // 评语
+  let rank = '';
+  if (score >= 300) rank = '🏆 传奇猎手！无人能敌！';
+  else if (score >= 200) rank = '🥇 地鼠克星！太厉害了！';
+  else if (score >= 150) rank = '🥈 打鼠高手！';
+  else if (score >= 100) rank = '🥉 不错不错，继续努力！';
+  else if (score >= 50) rank = '🌱 初出茅庐，还需磨练';
+  else rank = '😴 地鼠都在笑你呢～';
+
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('rankText').textContent = rank;
+  document.getElementById('overlay').classList.add('show');
+}
+
+// ========== 点击事件 ==========
+grid.addEventListener('click', (e) => {
+  if (!gameRunning) return;
+  const hole = e.target.closest('.hole');
+  if (!hole) return;
+  const idx = parseInt(hole.dataset.index);
+  whackMole(idx);
+});
+
+// 键盘快捷键（数字键 1-9 对应 9 个洞）
+document.addEventListener('keydown', (e) => {
+  if (!gameRunning) return;
+  const num = parseInt(e.key);
+  if (num >= 1 && num <= 9) {
+    whackMole(num - 1);
+  }
+});
+</script>
+</body>
+</html>

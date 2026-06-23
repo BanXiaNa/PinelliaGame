@@ -1,0 +1,8 @@
+{
+  "name": "打地鼠",
+  "description": "经典打地鼠游戏，考验你的反应速度",
+  "icon": "🔨",
+  "color": "#ff5722",
+  "path": "games/whack-a-mole",
+  "tags": ["经典", "休闲"]
+}
