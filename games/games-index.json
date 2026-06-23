@@ -126,5 +126,13 @@
     "color": "#1565c0",
     "path": "games/house-budget",
     "tags": ["工具", "模拟"]
+  },
+  {
+    "name": "霓虹幸存者",
+    "description": "霓虹风格的生存射击游戏，在光影中对抗敌人",
+    "icon": "🌟",
+    "color": "#00e5ff",
+    "path": "games/neon-survivor",
+    "tags": ["射击", "生存", "霓虹"]
   }
 ]
