@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "name": "换装小游戏",
+    "description": "给角色换装搭配，发挥你的时尚创意",
+    "icon": "👗",
+    "color": "#e91e63",
+    "path": "games/dress-up",
+    "tags": ["装扮", "休闲"]
+  }
+]
