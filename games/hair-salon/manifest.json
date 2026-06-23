@@ -1,0 +1,8 @@
+{
+  "name": "理发小游戏",
+  "description": "扮演理发师，为顾客设计时尚发型",
+  "icon": "💇",
+  "color": "#8bc34a",
+  "path": "games/hair-salon",
+  "tags": ["装扮", "休闲"]
+}

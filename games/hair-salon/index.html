@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💇 梦幻理发屋</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Microsoft YaHei', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+  user-select: none;
+}
+
+/* 顶部状态栏 */
+.top-bar {
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(10px);
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  font-size: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-bar .money { color: #ffd700; font-weight: bold; font-size: 22px; }
+.top-bar .day { color: #90ee90; }
+.top-bar .reputation { color: #ff69b4; }
+
+/* 主游戏区 */
+.game-container {
+  display: flex;
+  max-width: 1200px;
+  margin: 20px auto;
+  gap: 20px;
+  padding: 0 20px;
+}
+
+/* 左侧等候区 */
+.waiting-area {
+  width: 200px;
+  flex-shrink: 0;
+}
+.waiting-area h3 {
+  color: white;
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+.waiting-list {
+  background: rgba(255,255,255,0.15);
+  border-radius: 16px;
+  padding: 12px;
+  min-height: 400px;
+}
+.waiting-customer {
+  background: rgba(255,255,255,0.9);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+.waiting-customer:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+.waiting-customer .avatar { font-size: 40px; }
+.waiting-customer .name { font-weight: bold; font-size: 14px; margin: 4px 0; }
+.waiting-customer .need { font-size: 12px; color: #e74c3c; }
+
+/* 中间理发区 */
+.salon-area {
+  flex: 1;
+  background: rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 20px;
+  min-height: 500px;
+  position: relative;
+}
+.salon-area h2 {
+  color: white;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+/* 客人展示 */
+.customer-display {
+  background: rgba(255,255,255,0.95);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.customer-display .big-avatar { font-size: 100px; margin-bottom: 10px; }
+.customer-display .customer-name { font-size: 24px; font-weight: bold; color: #333; }
+.customer-display .customer-mood { font-size: 18px; margin: 5px 0; }
+.customer-display .needs-list {
+  margin: 15px 0;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.needs-list .need-tag {
+  background: #ff6b6b;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 14px;
+  animation: pulse 1.5s infinite;
+}
+.needs-list .need-tag.done {
+  background: #2ecc71;
+  animation: none;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* 工具栏 */
+.tools-bar {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.tool-btn {
+  background: linear-gradient(145deg, #f093fb, #f5576c);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 15px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 90px;
+}
+.tool-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+.tool-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.tool-btn .tool-icon { font-size: 28px; }
+.tool-btn .tool-name { font-size: 12px; margin-top: 4px; }
+.tool-btn .tool-lvl { font-size: 10px; opacity: 0.8; }
+
+/* 升级面板 */
+.upgrade-panel {
+  background: rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 15px;
+  width: 240px;
+  flex-shrink: 0;
+}
+.upgrade-panel h3 {
+  color: white;
+  text-align: center;
+  margin-bottom: 10px;
+}
+.upgrade-item {
+  background: rgba(255,255,255,0.9);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.upgrade-item:hover:not(.maxed) { transform: scale(1.03); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.upgrade-item.maxed { opacity: 0.6; cursor: default; }
+.upgrade-item .ui { display: flex; justify-content: space-between; align-items: center; }
+.upgrade-item .uname { font-weight: bold; font-size: 14px; }
+.upgrade-item .ulvl { font-size: 12px; color: #888; }
+.upgrade-item .ucost { color: #e74c3c; font-weight: bold; font-size: 13px; }
+.upgrade-item .ucost.free { color: #2ecc71; }
+.upgrade-progress {
+  height: 6px;
+  background: #eee;
+  border-radius: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.upgrade-progress .bar {
+  height: 100%;
+  background: linear-gradient(90deg, #f093fb, #f5576c);
+  border-radius: 3px;
+  transition: width 0.5s;
+}
+
+/* 结果提示 */
+.toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  color: white;
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-size: 18px;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* 空状态 */
+.empty-state {
+  color: rgba(255,255,255,0.7);
+  text-align: center;
+  padding-top: 100px;
+}
+.empty-state .big { font-size: 60px; margin-bottom: 15px; }
+.empty-state p { font-size: 18px; }
+
+/* 动画 */
+@keyframes slideIn {
+  from { transform: translateX(-30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.slide-in { animation: slideIn 0.4s ease-out; }
+.bounce { animation: bounce 0.5s; }
+
+/* 进度条动画 */
+.service-progress {
+  width: 80%;
+  height: 20px;
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 15px 0;
+  display: none;
+}
+.service-progress .sp-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #00b894, #00cec9);
+  width: 0%;
+  transition: width 0.1s linear;
+  border-radius: 10px;
+}
+
+/* 客人表情变化 */
+.mood-happy { color: #2ecc71; }
+.mood-neutral { color: #f39c12; }
+.mood-angry { color: #e74c3c; }
+
+/* 耐心条 */
+.patience-bar {
+  width: 120px;
+  height: 8px;
+  background: #eee;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px auto;
+}
+.patience-bar .pb {
+  height: 100%;
+  background: linear-gradient(90deg, #e74c3c, #f39c12, #2ecc71);
+  transition: width 1s linear;
+  border-radius: 4px;
+}
+
+/* 收入动画 */
+.money-float {
+  position: fixed;
+  font-size: 24px;
+  font-weight: bold;
+  color: #ffd700;
+  pointer-events: none;
+  z-index: 300;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  animation: floatUp 1.5s ease-out forwards;
+}
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-80px) scale(1.3); }
+}
+
+/* 日结面板 */
+.day-end-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.day-end-overlay.show { display: flex; }
+.day-end-card {
+  background: white;
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+.day-end-card h2 { color: #333; margin-bottom: 20px; }
+.day-end-card .stat { font-size: 18px; margin: 10px 0; color: #555; }
+.day-end-card .stat span { color: #e74c3c; font-weight: bold; }
+.day-end-card .next-btn {
+  background: linear-gradient(145deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 14px 40px;
+  border-radius: 12px;
+  font-size: 18px;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: transform 0.3s;
+}
+.day-end-card .next-btn:hover { transform: scale(1.05); }
+
+/* 成就提示 */
+.achievement {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 16px;
+  z-index: 300;
+  opacity: 0;
+  transform: translateX(100px);
+  transition: all 0.5s;
+}
+.achievement.show { opacity: 1; transform: translateX(0); }
+.achievement .ach-title { font-weight: bold; font-size: 16px; }
+.achievement .ach-desc { font-size: 13px; opacity: 0.9; }
+</style>
+</head>
+<body>
+
+<!-- 顶部状态栏 -->
+<div class="top-bar">
+  <div>💇 梦幻理发屋</div>
+  <div class="day">📅 第 <span id="dayNum">1</span> 天</div>
+  <div class="reputation">⭐ 声望: <span id="rep">0</span></div>
+  <div class="money">💰 <span id="money">0</span> 元</div>
+</div>
+
+<!-- 主游戏区 -->
+<div class="game-container">
+  <!-- 左侧等候区 -->
+  <div class="waiting-area">
+    <h3>🪑 等候区 (<span id="waitCount">0</span>/5)</h3>
+    <div class="waiting-list" id="waitingList"></div>
+  </div>
+
+  <!-- 中间理发区 -->
+  <div class="salon-area">
+    <h2>✂️ 理发工作台</h2>
+    <div class="customer-display" id="customerDisplay">
+      <div class="empty-state">
+        <div class="big">💈</div>
+        <p>点击左边的客人开始服务</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧升级面板 -->
+  <div class="upgrade-panel">
+    <h3>🔧 设备升级</h3>
+    <div id="upgradeList"></div>
+  </div>
+</div>
+
+<!-- 提示 -->
+<div class="toast" id="toast"></div>
+
+<!-- 日结 -->
+<div class="day-end-overlay" id="dayEnd">
+  <div class="day-end-card">
+    <h2>🌙 今日结算</h2>
+    <div class="stat">服务客人: <span id="deServed">0</span> 位</div>
+    <div class="stat">今日收入: <span id="deIncome">0</span> 元</div>
+    <div class="stat">获得声望: <span id="deRep">0</span></div>
+    <div class="stat" id="deTip" style="display:none">小费收入: <span id="deTipAmt">0</span> 元</div>
+    <button class="next-btn" onclick="startNextDay()">开始新的一天 →</button>
+  </div>
+</div>
+
+<!-- 成就 -->
+<div class="achievement" id="achievement">
+  <div class="ach-title" id="achTitle"></div>
+  <div class="ach-desc" id="achDesc"></div>
+</div>
+
+<script>
+// ============ 游戏数据 ============
+const AVATARS = ['👦','👧','👨','👩','👴','👵','🧑','👱','👲','🧔','🧒','🧓','👱‍♀️','👨‍🦱','👩‍🦰','👨‍🦳','👩‍🦲','🧔‍♀️'];
+const NAMES = ['小明','小红','大壮','美美','老王','张阿姨','李哥','小芳','赵姐','刘叔','小杰','阿花','大卫','露露','阿强','小雪','胖虎','小静'];
+const HAIR_STYLES = ['长发','短发','卷发','直发','爆炸头','光头','刘海','马尾'];
+
+const SERVICES = {
+  wash:   { name: '洗头', icon: '🚿', baseTime: 2000, basePrice: 15 },
+  cut:    { name: '理发', icon: '✂️', baseTime: 3000, basePrice: 25 },
+  perm:   { name: '烫发', icon: '🔥', baseTime: 5000, basePrice: 50 },
+  dye:    { name: '染发', icon: '🎨', baseTime: 4500, basePrice: 45 },
+  style:  { name: '造型', icon: '💫', baseTime: 3500, basePrice: 35 },
+  shave:  { name: '刮脸', icon: '🪒', baseTime: 2500, basePrice: 20 },
+};
+
+const UPGRADES = [
+  { id: 'scissors', name: '✂️ 剪刀', desc: '加快理发速度', maxLvl: 5, baseCost: 80, effect: (l) => 1 - l * 0.12 },
+  { id: 'dryer', name: '💨 吹风机', desc: '加快造型速度', maxLvl: 5, baseCost: 100, effect: (l) => 1 - l * 0.12 },
+  { id: 'permRod', name: '🔥 烫发器', desc: '加快烫发速度', maxLvl: 5, baseCost: 120, effect: (l) => 1 - l * 0.12 },
+  { id: 'dyeKit', name: '🎨 染发套装', desc: '加快染发速度', maxLvl: 5, baseCost: 120, effect: (l) => 1 - l * 0.12 },
+  { id: 'shampoo', name: '🧴 高级洗发水', desc: '洗头更舒适，加声望', maxLvl: 3, baseCost: 150, effect: (l) => l * 0.5 },
+  { id: 'chair', name: '💺 按摩椅', desc: '客人耐心+20%', maxLvl: 3, baseCost: 200, effect: (l) => l * 0.2 },
+  { id: 'music', name: '🎵 音响系统', desc: '客人基础心情提升', maxLvl: 3, baseCost: 180, effect: (l) => l },
+  { id: 'decor', name: '🖼️ 装修升级', desc: '基础价格+15%', maxLvl: 3, baseCost: 250, effect: (l) => l * 0.15 },
+];
+
+// ============ 游戏状态 ============
+let state = {
+  money: 0,
+  reputation: 0,
+  day: 1,
+  dayServed: 0,
+  dayIncome: 0,
+  dayRep: 0,
+  dayTips: 0,
+  totalServed: 0,
+  upgrades: {},
+  currentCustomer: null,
+  waitingCustomers: [],
+  maxWaiting: 5,
+  serving: false,
+};
+
+// 初始化升级
+UPGRADES.forEach(u => state.upgrades[u.id] = 0);
+
+// ============ 生成客人 ============
+function generateCustomer() {
+  const avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
+  const name = NAMES[Math.floor(Math.random() * NAMES.length)];
+  const serviceKeys = Object.keys(SERVICES);
+  const numNeeds = Math.min(1 + Math.floor(Math.random() * 3), 3);
+  const needs = [];
+  const shuffled = [...serviceKeys].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < numNeeds; i++) needs.push(shuffled[i]);
+
+  const patienceBase = 30 + Math.floor(Math.random() * 20); // 秒
+  const chairBonus = getUpgradeEffect('chair');
+  const patience = Math.floor(patienceBase * (1 + chairBonus));
+
+  // 小费概率跟声望有关
+  const tipChance = 0.1 + state.reputation * 0.005;
+
+  return {
+    avatar, name, needs, needsDone: [],
+    patience, patienceLeft: patience,
+    mood: 100, tipChance,
+    timer: null,
+  };
+}
+
+function getUpgradeLevel(id) { return state.upgrades[id] || 0; }
+function getUpgradeEffect(id) {
+  const u = UPGRADES.find(x => x.id === id);
+  return u ? u.effect(getUpgradeLevel(id)) : 0;
+}
+
+function getServiceTime(key) {
+  const base = SERVICES[key].baseTime;
+  const speedMap = { cut: 'scissors', style: 'dryer', perm: 'permRod', dye: 'dyeKit', wash: 'shampoo', shave: 'scissors' };
+  const upId = speedMap[key];
+  const multiplier = upId ? getUpgradeEffect(upId) : 1;
+  // effect returns reduction factor for speed upgrades
+  let mult = 1;
+  if (['scissors','dryer','permRod','dyeKit'].includes(upId)) mult = multiplier;
+  return Math.max(800, base * mult);
+}
+
+function getServicePrice(key) {
+  const base = SERVICES[key].basePrice;
+  const decorBonus = 1 + getUpgradeEffect('decor');
+  const lvlBonus = 1 + state.reputation * 0.01;
+  return Math.floor(base * decorBonus * lvlBonus);
+}
+
+// ============ 等候区管理 ============
+function fillWaitingArea() {
+  while (state.waitingCustomers.length < state.maxWaiting) {
+    state.waitingCustomers.push(generateCustomer());
+  }
+  renderWaiting();
+}
+
+function renderWaiting() {
+  const el = document.getElementById('waitingList');
+  document.getElementById('waitCount').textContent = state.waitingCustomers.length;
+  if (state.waitingCustomers.length === 0) {
+    el.innerHTML = '<div style="color:rgba(255,255,255,0.5);text-align:center;padding:40px 0;">暂无客人</div>';
+    return;
+  }
+  el.innerHTML = state.waitingCustomers.map((c, i) => `
+    <div class="waiting-customer slide-in" onclick="selectCustomer(${i})" style="animation-delay:${i*0.1}s">
+      <div class="avatar">${c.avatar}</div>
+      <div class="name">${c.name}</div>
+      <div class="need">${c.needs.map(n => SERVICES[n].icon).join(' ')}</div>
+    </div>
+  `).join('');
+}
+
+// ============ 选择客人 ============
+function selectCustomer(idx) {
+  if (state.serving) { showToast('⚠️ 请先完成当前客人'); return; }
+  const c = state.waitingCustomers.splice(idx, 1)[0];
+  state.currentCustomer = c;
+  renderWaiting();
+  renderCustomer();
+  startPatienceTimer();
+}
+
+function startPatienceTimer() {
+  const c = state.currentCustomer;
+  if (!c) return;
+  clearInterval(c.timer);
+  c.timer = setInterval(() => {
+    c.patienceLeft--;
+    updatePatienceBar();
+    if (c.patienceLeft <= 0) {
+      clearInterval(c.timer);
+      customerLeave(true);
+    }
+  }, 1000);
+}
+
+function updatePatienceBar() {
+  const c = state.currentCustomer;
+  if (!c) return;
+  const pb = document.querySelector('.patience-bar .pb');
+  if (pb) pb.style.width = (c.patienceLeft / c.patience * 100) + '%';
+}
+
+function renderCustomer() {
+  const c = state.currentCustomer;
+  const el = document.getElementById('customerDisplay');
+  if (!c) {
+    el.innerHTML = '<div class="empty-state"><div class="big">💈</div><p>点击左边的客人开始服务</p></div>';
+    return;
+  }
+  const musicBonus = getUpgradeEffect('music');
+  const moodClass = c.mood >= 70 ? 'mood-happy' : c.mood >= 40 ? 'mood-neutral' : 'mood-angry';
+  const moodEmoji = c.mood >= 70 ? '😊' : c.mood >= 40 ? '😐' : '😠';
+
+  el.innerHTML = `
+    <div class="big-avatar bounce">${c.avatar}</div>
+    <div class="customer-name">${c.name}</div>
+    <div class="customer-mood ${moodClass}">${moodEmoji} 心情: ${c.mood}%</div>
+    <div class="patience-bar"><div class="pb" style="width:${c.patienceLeft/c.patience*100}%"></div></div>
+    <div class="needs-list">
+      ${c.needs.map(n => {
+        const done = c.needsDone.includes(n);
+        return `<span class="need-tag ${done ? 'done' : ''}">${SERVICES[n].icon} ${SERVICES[n].name} ${done ? '✓' : ''}</span>`;
+      }).join('')}
+    </div>
+    <div class="service-progress" id="svcProgress"><div class="sp-bar" id="svcBar"></div></div>
+    <div class="tools-bar" id="toolsBar">
+      ${c.needs.map(n => {
+        const done = c.needsDone.includes(n);
+        const svc = SERVICES[n];
+        return `<button class="tool-btn" ${done ? 'disabled' : ''} onclick="doService('${n}')">
+          <span class="tool-icon">${svc.icon}</span>
+          <span class="tool-name">${svc.name}</span>
+          <span class="tool-lvl">${getServicePrice(n)}元</span>
+        </button>`;
+      }).join('')}
+      <button class="tool-btn" style="background:linear-gradient(145deg,#a8e063,#56ab2f)" onclick="finishCustomer()">
+        <span class="tool-icon">👋</span>
+        <span class="tool-name">完成送客</span>
+      </button>
+    </div>
+  `;
+}
+
+// ============ 执行服务 ============
+let serviceRunning = false;
+function doService(key) {
+  if (serviceRunning || !state.currentCustomer) return;
+  const c = state.currentCustomer;
+  if (c.needsDone.includes(key)) return;
+
+  serviceRunning = true;
+  const toolsBar = document.getElementById('toolsBar');
+  toolsBar.querySelectorAll('.tool-btn').forEach(b => b.disabled = true);
+
+  const progressEl = document.getElementById('svcProgress');
+  const barEl = document.getElementById('svcBar');
+  progressEl.style.display = 'block';
+  barEl.style.width = '0%';
+
+  const totalTime = getServiceTime(key);
+  const startTime = Date.now();
+
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const pct = Math.min(100, (elapsed / totalTime) * 100);
+    barEl.style.width = pct + '%';
+    if (pct < 100) {
+      requestAnimationFrame(animate);
+    } else {
+      // 完成服务
+      c.needsDone.push(key);
+      const price = getServicePrice(key);
+      const shampooBonus = (key === 'wash') ? Math.floor(getUpgradeEffect('shampoo') * 10) : 0;
+      const earned = price + shampooBonus;
+      state.money += earned;
+      state.dayIncome += earned;
+      state.dayServed++;
+
+      // 心情
+      const musicBonus = getUpgradeEffect('music');
+      c.mood = Math.min(100, c.mood + 15 + musicBonus);
+
+      showToast(`✅ ${SERVICES[key].name}完成！+${earned}元`);
+      spawnMoneyFloat(earned);
+
+      serviceRunning = false;
+      progressEl.style.display = 'none';
+      renderCustomer();
+      updateUI();
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+// ============ 完成送客 ============
+function finishCustomer() {
+  const c = state.currentCustomer;
+  if (!c) return;
+  if (serviceRunning) { showToast('⚠️ 服务进行中...'); return; }
+
+  if (c.needsDone.length === 0) {
+    showToast('😅 还没做任何服务呢');
+    return;
+  }
+
+  clearInterval(c.timer);
+
+  // 计算小费
+  const allDone = c.needs.length === c.needsDone.length;
+  let tip = 0;
+  if (allDone && Math.random() < c.tipChance) {
+    tip = Math.floor((c.needs.length * 15) * (c.mood / 100));
+    state.money += tip;
+    state.dayTips += tip;
+    showToast(`🤑 ${c.name}给了${tip}元小费！`);
+    spawnMoneyFloat(tip);
+  }
+
+  // 声望
+  let repGain = c.needsDone.length;
+  if (allDone) repGain += 2;
+  if (c.mood >= 80) repGain += 1;
+  state.reputation += repGain;
+  state.dayRep += repGain;
+  state.totalServed++;
+
+  customerLeave(false);
+}
+
+function customerLeave(angry) {
+  const c = state.currentCustomer;
+  if (c) clearInterval(c.timer);
+  if (angry) {
+    showToast(`😤 ${c.name}等得不耐烦走了！声望-1`);
+    state.reputation = Math.max(0, state.reputation - 1);
+  }
+  state.currentCustomer = null;
+  serviceRunning = false;
+  renderCustomer();
+  updateUI();
+
+  // 补充等候区
+  setTimeout(() => {
+    if (state.waitingCustomers.length < state.maxWaiting) {
+      state.waitingCustomers.push(generateCustomer());
+      renderWaiting();
+    }
+  }, 1000);
+}
+
+// ============ 升级系统 ============
+function renderUpgrades() {
+  const el = document.getElementById('upgradeList');
+  el.innerHTML = UPGRADES.map(u => {
+    const lvl = getUpgradeLevel(u.id);
+    const maxed = lvl >= u.maxLvl;
+    const cost = maxed ? 0 : Math.floor(u.baseCost * Math.pow(1.6, lvl));
+    const canAfford = state.money >= cost;
+    return `
+      <div class="upgrade-item ${maxed ? 'maxed' : ''}" onclick="${maxed ? '' : `buyUpgrade('${u.id}')`}">
+        <div class="ui">
+          <div>
+            <div class="uname">${u.name}</div>
+            <div class="ulvl">Lv.${lvl}/${u.maxLvl} · ${u.desc}</div>
+          </div>
+          <div class="ucost ${maxed ? 'free' : ''}">${maxed ? '已满级' : `💰${cost}`}</div>
+        </div>
+        <div class="upgrade-progress"><div class="bar" style="width:${lvl/u.maxLvl*100}%"></div></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function buyUpgrade(id) {
+  const u = UPGRADES.find(x => x.id === id);
+  const lvl = getUpgradeLevel(id);
+  if (lvl >= u.maxLvl) return;
+  const cost = Math.floor(u.baseCost * Math.pow(1.6, lvl));
+  if (state.money < cost) { showToast('💸 金币不足'); return; }
+  state.money -= cost;
+  state.upgrades[id]++;
+  showToast(`🔧 ${u.name} 升级到 Lv.${lvl + 1}！`);
+  renderUpgrades();
+  updateUI();
+}
+
+// ============ 日结 ============
+function checkDayEnd() {
+  if (state.dayServed >= 6 + state.day) {
+    showDayEnd();
+  }
+}
+
+function showDayEnd() {
+  document.getElementById('deServed').textContent = state.dayServed;
+  document.getElementById('deIncome').textContent = state.dayIncome;
+  document.getElementById('deRep').textContent = state.dayRep;
+  const tipEl = document.getElementById('deTip');
+  if (state.dayTips > 0) {
+    tipEl.style.display = 'block';
+    document.getElementById('deTipAmt').textContent = state.dayTips;
+  } else {
+    tipEl.style.display = 'none';
+  }
+  document.getElementById('dayEnd').classList.add('show');
+}
+
+function startNextDay() {
+  document.getElementById('dayEnd').classList.remove('show');
+  state.day++;
+  state.dayServed = 0;
+  state.dayIncome = 0;
+  state.dayRep = 0;
+  state.dayTips = 0;
+  state.waitingCustomers = [];
+  state.currentCustomer = null;
+  serviceRunning = false;
+  fillWaitingArea();
+  renderCustomer();
+  updateUI();
+  showToast(`🌅 第${state.day}天开始了！`);
+
+  // 每3天增加等候位
+  if (state.day % 3 === 0 && state.maxWaiting < 8) {
+    state.maxWaiting++;
+    showToast(`🪑 等候区扩展到${state.maxWaiting}个座位！`);
+  }
+
+  checkAchievements();
+}
+
+// ============ 成就系统 ============
+const ACHIEVEMENTS = [
+  { id: 'first', check: () => state.totalServed >= 1, title: '🎉 初出茅庐', desc: '完成第一次理发服务' },
+  { id: 'rich', check: () => state.money >= 500, title: '💰 小有积蓄', desc: '累计赚取500元' },
+  { id: 'popular', check: () => state.reputation >= 20, title: '⭐ 人气理发师', desc: '声望达到20' },
+  { id: 'master', check: () => state.totalServed >= 30, title: '🏆 理发大师', desc: '服务30位客人' },
+  { id: 'tycoon', check: () => state.money >= 3000, title: '💎 理发业大亨', desc: '累计赚取3000元' },
+];
+let achieved = new Set();
+
+function checkAchievements() {
+  ACHIEVEMENTS.forEach(a => {
+    if (!achieved.has(a.id) && a.check()) {
+      achieved.add(a.id);
+      showAchievement(a.title, a.desc);
+    }
+  });
+}
+
+function showAchievement(title, desc) {
+  const el = document.getElementById('achievement');
+  document.getElementById('achTitle').textContent = title;
+  document.getElementById('achDesc').textContent = desc;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ============ UI 工具 ============
+function updateUI() {
+  document.getElementById('money').textContent = state.money;
+  document.getElementById('rep').textContent = state.reputation;
+  document.getElementById('dayNum').textContent = state.day;
+  checkDayEnd();
+  checkAchievements();
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function spawnMoneyFloat(amount) {
+  const el = document.createElement('div');
+  el.className = 'money-float';
+  el.textContent = `+${amount}💰`;
+  el.style.left = (window.innerWidth / 2 - 30) + 'px';
+  el.style.top = (window.innerHeight / 2) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
+// ============ 初始化 ============
+function init() {
+  fillWaitingArea();
+  renderUpgrades();
+  updateUI();
+  showToast('💈 欢迎来到梦幻理发屋！点击客人开始营业');
+
+  // 自动补充客人
+  setInterval(() => {
+    if (state.waitingCustomers.length < state.maxWaiting && !state.currentCustomer) {
+      state.waitingCustomers.push(generateCustomer());
+      renderWaiting();
+    }
+  }, 3000);
+}
+
+init();
+</script>
+</body>
+</html>
