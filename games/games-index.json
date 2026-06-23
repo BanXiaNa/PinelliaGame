@@ -6,5 +6,13 @@
     "color": "#e91e63",
     "path": "games/dress-up",
     "tags": ["装扮", "休闲"]
+  },
+  {
+    "name": "化妆小游戏",
+    "description": "为角色化妆打扮，打造精致妆容",
+    "icon": "💄",
+    "color": "#ff69b4",
+    "path": "games/makeup",
+    "tags": ["装扮", "休闲"]
   }
 ]

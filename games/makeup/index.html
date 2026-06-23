@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✨ 化妆小游戏 ✨</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #fce4ec, #f3e5f5, #e8eaf6);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  h1 {
+    text-align: center;
+    padding: 18px;
+    background: linear-gradient(90deg, #e91e63, #9c27b0, #673ab7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 2.2em;
+    text-shadow: none;
+    letter-spacing: 4px;
+  }
+  .game-container {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    padding: 10px 20px 30px;
+    flex-wrap: wrap;
+  }
+  .left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 200px;
+  }
+  .face-area {
+    position: relative;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(233,30,99,0.15);
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  canvas#faceCanvas {
+    cursor: crosshair;
+    border-radius: 16px;
+  }
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 220px;
+  }
+  .panel-section {
+    background: rgba(255,255,255,0.85);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+  .panel-section h3 {
+    font-size: 1em;
+    color: #ad1457;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #f8bbd0;
+    padding-bottom: 6px;
+  }
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .tool-btn {
+    border: 2px solid #f48fb1;
+    border-radius: 12px;
+    padding: 10px 4px;
+    background: #fff;
+    cursor: pointer;
+    text-align: center;
+    font-size: 0.82em;
+    transition: all 0.2s;
+    color: #880e4f;
+  }
+  .tool-btn:hover { background: #fce4ec; transform: scale(1.05); }
+  .tool-btn.active {
+    background: linear-gradient(135deg, #f48fb1, #ce93d8);
+    color: #fff;
+    border-color: #ab47bc;
+    box-shadow: 0 2px 12px rgba(233,30,99,0.3);
+  }
+  .tool-btn .icon { font-size: 1.6em; display: block; margin-bottom: 2px; }
+  .color-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .color-swatch {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .color-swatch:hover { transform: scale(1.2); }
+  .color-swatch.active { border-color: #333; box-shadow: 0 0 8px rgba(0,0,0,0.3); }
+  .slider-group { margin-top: 8px; }
+  .slider-group label { font-size: 0.85em; color: #6a1b9a; }
+  .slider-group input[type=range] {
+    width: 100%;
+    accent-color: #e91e63;
+  }
+  .action-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .action-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    transition: all 0.2s;
+  }
+  .action-btn:hover { transform: scale(1.05); }
+  .btn-undo { background: #fff3e0; color: #e65100; }
+  .btn-clear { background: #fce4ec; color: #c62828; }
+  .btn-save { background: #e8f5e9; color: #2e7d32; }
+  .btn-random { background: #e3f2fd; color: #1565c0; }
+  .btn-eraser { background: #f3e5f5; color: #6a1b9a; }
+  .pattern-section { margin-top: 8px; }
+  .pattern-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pattern-btn {
+    padding: 6px 12px;
+    border: 2px solid #ce93d8;
+    border-radius: 20px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: all 0.2s;
+  }
+  .pattern-btn:hover { background: #f3e5f5; }
+  .pattern-btn.active {
+    background: #ce93d8;
+    color: #fff;
+  }
+  .sticker-area {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .sticker-btn {
+    font-size: 1.6em;
+    background: none;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 4px;
+    transition: all 0.2s;
+  }
+  .sticker-btn:hover { background: #fce4ec; transform: scale(1.2); }
+  .sticker-btn.active { border-color: #e91e63; background: #fce4ec; }
+  .preset-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .preset-btn {
+    padding: 6px 14px;
+    border: 2px solid #f48fb1;
+    border-radius: 20px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.82em;
+    transition: all 0.2s;
+    color: #880e4f;
+  }
+  .preset-btn:hover { background: #fce4ec; }
+  #statusBar {
+    text-align: center;
+    padding: 6px;
+    font-size: 0.82em;
+    color: #ad1457;
+    background: rgba(255,255,255,0.6);
+    border-radius: 8px;
+    margin-top: 4px;
+  }
+  @media (max-width: 900px) {
+    .game-container { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+
+<h1>✨ 化妆小游戏 ✨</h1>
+
+<div class="game-container">
+  <!-- Left Tools -->
+  <div class="left-panel">
+    <div class="panel-section">
+      <h3>💄 化妆工具</h3>
+      <div class="tool-grid">
+        <button class="tool-btn active" data-tool="lipstick" title="口红"><span class="icon">💋</span>口红</button>
+        <button class="tool-btn" data-tool="eyeshadow" title="眼影"><span class="icon">👁️</span>眼影</button>
+        <button class="tool-btn" data-tool="blush" title="腮红"><span class="icon">🌸</span>腮红</button>
+        <button class="tool-btn" data-tool="eyeliner" title="眼线"><span class="icon">✒️</span>眼线</button>
+        <button class="tool-btn" data-tool="foundation" title="粉底"><span class="icon">🧴</span>粉底</button>
+        <button class="tool-btn" data-tool="highlighter" title="高光"><span class="icon">✨</span>高光</button>
+        <button class="tool-btn" data-tool="contour" title="修容"><span class="icon">🖌️</span>修容</button>
+        <button class="tool-btn" data-tool="brow" title="眉毛"><span class="icon">〰️</span>眉毛</button>
+        <button class="tool-btn" data-tool="sticker" title="贴纸"><span class="icon">💎</span>贴纸</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>🎨 颜色选择</h3>
+      <div id="colorPalette" class="color-palette"></div>
+      <div class="slider-group">
+        <label>画笔大小: <span id="sizeVal">12</span></label>
+        <input type="range" id="brushSize" min="3" max="50" value="12">
+      </div>
+      <div class="slider-group">
+        <label>透明度: <span id="opacityVal">70</span>%</label>
+        <input type="range" id="brushOpacity" min="10" max="100" value="70">
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="face-area">
+    <canvas id="faceCanvas" width="500" height="620"></canvas>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="right-panel">
+    <div class="panel-section">
+      <h3>🌈 腮红形状</h3>
+      <div class="pattern-grid">
+        <button class="pattern-btn active" data-pattern="circle">圆形</button>
+        <button class="pattern-btn" data-pattern="heart">心形</button>
+        <button class="pattern-btn" data-pattern="star">星形</button>
+        <button class="pattern-btn" data-pattern="diamond">菱形</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>💎 装饰贴纸</h3>
+      <div class="sticker-area">
+        <button class="sticker-btn" data-sticker="⭐">⭐</button>
+        <button class="sticker-btn" data-sticker="💖">💖</button>
+        <button class="sticker-btn" data-sticker="🦋">🦋</button>
+        <button class="sticker-btn" data-sticker="🌸">🌸</button>
+        <button class="sticker-btn" data-sticker="💎">💎</button>
+        <button class="sticker-btn" data-sticker="👑">👑</button>
+        <button class="sticker-btn" data-sticker="🌙">🌙</button>
+        <button class="sticker-btn" data-sticker="🎀">🎀</button>
+        <button class="sticker-btn" data-sticker="❤️">❤️</button>
+        <button class="sticker-btn" data-sticker="✨">✨</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>👗 妆容预设</h3>
+      <div class="preset-btns">
+        <button class="preset-btn" data-preset="natural">🌿 清新裸妆</button>
+        <button class="preset-btn" data-preset="party">🎉 派对妆</button>
+        <button class="preset-btn" data-preset="kawaii">🎀 可爱妆</button>
+        <button class="preset-btn" data-preset="cool">😎 酷飒妆</button>
+        <button class="preset-btn" data-preset="retro">🌹 复古妆</button>
+        <button class="preset-btn" data-preset="fairy">🧚 仙女妆</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>⚡ 操作</h3>
+      <div class="action-btns">
+        <button class="action-btn btn-undo" id="btnUndo">↩ 撤销</button>
+        <button class="action-btn btn-eraser" id="btnEraser">🧹 橡皮</button>
+        <button class="action-btn btn-random" id="btnRandom">🎲 随机</button>
+        <button class="action-btn btn-clear" id="btnClear">🗑 清除</button>
+        <button class="action-btn btn-save" id="btnSave">💾 保存</button>
+      </div>
+    </div>
+
+    <div id="statusBar">准备好了！选择工具开始化妆吧~ 💄</div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('faceCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// State
+let currentTool = 'lipstick';
+let currentColor = '#e91e63';
+let brushSize = 12;
+let brushOpacity = 0.7;
+let isDrawing = false;
+let isEraser = false;
+let currentPattern = 'circle';
+let currentSticker = '⭐';
+let history = [];
+let lastX, lastY;
+
+// Tool colors
+const toolColors = {
+  lipstick: ['#e91e63','#c62828','#ad1457','#f48fb1','#d81b60','#880e4f','#ff5252','#ff80ab','#b71c1c'],
+  eyeshadow: ['#9c27b0','#7b1fa2','#ce93d8','#4a148c','#673ab7','#311b92','#b39ddb','#e1bee7','#ff6f00'],
+  blush: ['#f48fb1','#ff80ab','#f06292','#ec407a','#e91e63','#f8bbd0','#ff4081','#f50057','#c51162'],
+  eyeliner: ['#212121','#263238','#37474f','#1a1a2e','#0d0d0d','#1b1b2f','#162447','#1f4068','#2b2d42'],
+  foundation: ['#ffccbc','#ffe0b2','#d7ccc8','#bcaaa4','#a1887f','#8d6e63','#f5deb3','#deb887','#d2b48c'],
+  highlighter: ['#fff9c4','#fff176','#ffee58','#ffd54f','#ffb300','#ffffff','#e0f7fa','#b2ebf2','#80deea'],
+  contour: ['#795548','#8d6e63','#a1887f','#6d4c41','#5d4037','#4e342e','#3e2723','#d7ccc8','#bcaaa4'],
+  brow: ['#4e342e','#5d4037','#6d4c41','#3e2723','#795548','#8d6e63','#37474f','#263238','#455a64'],
+  sticker: ['#e91e63','#9c27b0','#2196f3','#4caf50','#ff9800','#f44336','#00bcd4','#ffeb3b','#795548']
+};
+
+// Sticker sizes
+const stickerSizes = [18, 22, 26, 30, 34];
+
+function setStatus(msg) {
+  document.getElementById('statusBar').textContent = msg;
+}
+
+// Save state for undo
+function saveState() {
+  history.push(canvas.toDataURL());
+  if (history.length > 30) history.shift();
+}
+
+// Draw face base
+function drawFace() {
+  // Background gradient
+  let bg = ctx.createRadialGradient(W/2, H/2, 50, W/2, H/2, 400);
+  bg.addColorStop(0, '#fff5f5');
+  bg.addColorStop(1, '#fce4ec');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Neck
+  ctx.fillStyle = '#ffe0c2';
+  ctx.beginPath();
+  ctx.moveTo(W/2-55, H-30);
+  ctx.quadraticCurveTo(W/2-60, H+10, W/2-70, H);
+  ctx.lineTo(W/2+70, H);
+  ctx.quadraticCurveTo(W/2+60, H+10, W/2+55, H-30);
+  ctx.fill();
+
+  // Face shape
+  ctx.fillStyle = '#ffe8cc';
+  ctx.beginPath();
+  ctx.ellipse(W/2, 270, 155, 195, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Face contour shadow
+  let grd = ctx.createRadialGradient(W/2, 260, 100, W/2, 270, 180);
+  grd.addColorStop(0, 'rgba(255,228,204,0)');
+  grd.addColorStop(1, 'rgba(255,200,170,0.3)');
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.ellipse(W/2, 270, 155, 195, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Ears
+  ctx.fillStyle = '#ffe0c2';
+  ctx.beginPath();
+  ctx.ellipse(W/2-158, 275, 18, 28, -0.1, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(W/2+158, 275, 18, 28, 0.1, 0, Math.PI*2);
+  ctx.fill();
+
+  // Hair (back)
+  ctx.fillStyle = '#4e342e';
+  ctx.beginPath();
+  ctx.ellipse(W/2, 180, 175, 150, 0, Math.PI, Math.PI*2);
+  ctx.fill();
+  // Hair top
+  ctx.beginPath();
+  ctx.ellipse(W/2, 110, 170, 100, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Side hair
+  ctx.fillStyle = '#4e342e';
+  ctx.fillRect(W/2-170, 110, 35, 250);
+  ctx.fillRect(W/2+135, 110, 35, 250);
+  // Hair shine
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath();
+  ctx.ellipse(W/2-30, 100, 50, 30, -0.3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyes - white
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(W/2-55, 265, 35, 22, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(W/2+55, 265, 35, 22, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyes - iris
+  let irisGrd = ctx.createRadialGradient(W/2-55, 263, 5, W/2-55, 265, 18);
+  irisGrd.addColorStop(0, '#5d4037');
+  irisGrd.addColorStop(0.6, '#3e2723');
+  irisGrd.addColorStop(1, '#1a1a1a');
+  ctx.fillStyle = irisGrd;
+  ctx.beginPath();
+  ctx.ellipse(W/2-55, 265, 16, 16, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(W/2+55, 265, 16, 16, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyes - pupil
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.ellipse(W/2-55, 265, 8, 8, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(W/2+55, 265, 8, 8, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyes - highlight
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(W/2-50, 260, 5, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(W/2+60, 260, 5, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyelashes top
+  ctx.strokeStyle = '#3e2723';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(W/2-55, 265, 36, 23, 0, Math.PI+0.3, -0.3);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(W/2+55, 265, 36, 23, 0, Math.PI+0.3, -0.3);
+  ctx.stroke();
+
+  // Lash details
+  ctx.lineWidth = 1.5;
+  for(let i = 0; i < 5; i++) {
+    let angle = Math.PI + 0.3 + i * 0.15;
+    let x1 = W/2-55 + Math.cos(angle)*36;
+    let y1 = 265 + Math.sin(angle)*23;
+    let x2 = x1 + Math.cos(angle-0.3)*6;
+    let y2 = y1 + Math.sin(angle-0.3)*6;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    x1 = W/2+55 + Math.cos(Math.PI-angle+0.3)*36;
+    y1 = 265 + Math.sin(Math.PI-angle+0.3)*23;
+    x2 = x1 + Math.cos(Math.PI-angle)*6;
+    y2 = y1 + Math.sin(Math.PI-angle)*6;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  // Eyebrows
+  ctx.strokeStyle = '#5d4037';
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(W/2-80, 228);
+  ctx.quadraticCurveTo(W/2-55, 215, W/2-25, 228);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(W/2+80, 228);
+  ctx.quadraticCurveTo(W/2+55, 215, W/2+25, 228);
+  ctx.stroke();
+
+  // Nose
+  ctx.strokeStyle = '#d4a574';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(W/2, 290);
+  ctx.quadraticCurveTo(W/2-12, 325, W/2-15, 330);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(W/2, 290);
+  ctx.quadraticCurveTo(W/2+12, 325, W/2+15, 330);
+  ctx.stroke();
+
+  // Lips - base
+  ctx.fillStyle = '#e8967a';
+  ctx.beginPath();
+  ctx.moveTo(W/2-28, 370);
+  ctx.quadraticCurveTo(W/2-15, 358, W/2, 360);
+  ctx.quadraticCurveTo(W/2+15, 358, W/2+28, 370);
+  ctx.quadraticCurveTo(W/2+15, 376, W/2, 375);
+  ctx.quadraticCurveTo(W/2-15, 376, W/2-28, 370);
+  ctx.fill();
+
+  // Lower lip
+  ctx.fillStyle = '#d4836a';
+  ctx.beginPath();
+  ctx.moveTo(W/2-28, 370);
+  ctx.quadraticCurveTo(W/2, 388, W/2+28, 370);
+  ctx.quadraticCurveTo(W/2, 378, W/2-28, 370);
+  ctx.fill();
+
+  // Lip line
+  ctx.strokeStyle = '#c0725a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W/2-28, 370);
+  ctx.quadraticCurveTo(W/2, 365, W/2+28, 370);
+  ctx.stroke();
+
+  // Lip highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(W/2, 365, 10, 4, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  saveState();
+}
+
+// Initialize palette
+function updatePalette() {
+  const palette = document.getElementById('colorPalette');
+  palette.innerHTML = '';
+  const colors = toolColors[currentTool] || toolColors.lipstick;
+  colors.forEach(c => {
+    const swatch = document.createElement('div');
+    swatch.className = 'color-swatch' + (c === currentColor ? ' active' : '');
+    swatch.style.background = c;
+    swatch.onclick = () => {
+      currentColor = c;
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      swatch.classList.add('active');
+      isEraser = false;
+      setStatus('颜色已切换 🎨');
+    };
+    palette.appendChild(swatch);
+  });
+  currentColor = colors[0];
+}
+
+// Tool selection
+document.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTool = btn.dataset.tool;
+    isEraser = false;
+    updatePalette();
+    setStatus('已选择: ' + btn.textContent.trim() + ' 💄');
+  };
+});
+
+// Pattern selection
+document.querySelectorAll('.pattern-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentPattern = btn.dataset.pattern;
+  };
+});
+
+// Sticker selection
+document.querySelectorAll('.sticker-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.sticker-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSticker = btn.dataset.sticker;
+    currentTool = 'sticker';
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-tool="sticker"]').classList.add('active');
+    setStatus('贴纸模式: ' + currentSticker);
+  };
+});
+
+// Sliders
+document.getElementById('brushSize').oninput = function() {
+  brushSize = +this.value;
+  document.getElementById('sizeVal').textContent = brushSize;
+};
+document.getElementById('brushOpacity').oninput = function() {
+  brushOpacity = +this.value / 100;
+  document.getElementById('opacityVal').textContent = +this.value;
+};
+
+// Drawing
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W / rect.width;
+  const scaleY = H / rect.height;
+  if (e.touches) {
+    return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+  }
+  return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+}
+
+function drawBrush(x, y) {
+  ctx.save();
+  ctx.globalAlpha = brushOpacity;
+
+  if (currentTool === 'sticker' || (currentTool === 'sticker' && currentSticker)) {
+    ctx.globalAlpha = 1;
+    ctx.font = `${brushSize * 2}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(currentSticker, x, y);
+    ctx.restore();
+    return;
+  }
+
+  if (isEraser) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  if (currentTool === 'eyeliner' || currentTool === 'brow') {
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = Math.max(2, brushSize / 3);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (lastX !== undefined) {
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (currentTool === 'highlighter') {
+    let grd = ctx.createRadialGradient(x, y, 0, x, y, brushSize);
+    grd.addColorStop(0, currentColor);
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  if (currentTool === 'blush') {
+    ctx.fillStyle = currentColor;
+    switch(currentPattern) {
+      case 'heart':
+        drawHeart(x, y, brushSize);
+        break;
+      case 'star':
+        drawStar(x, y, brushSize);
+        break;
+      case 'diamond':
+        drawDiamond(x, y, brushSize);
+        break;
+      default:
+        let g = ctx.createRadialGradient(x, y, 0, x, y, brushSize);
+        g.addColorStop(0, currentColor);
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+
+  // Default soft brush
+  let grd = ctx.createRadialGradient(x, y, 0, x, y, brushSize);
+  grd.addColorStop(0, currentColor);
+  grd.addColorStop(0.5, currentColor + '88');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(x, y, brushSize, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawHeart(x, y, s) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s/20, s/20);
+  ctx.beginPath();
+  ctx.moveTo(0, -5);
+  ctx.bezierCurveTo(-10, -18, -22, -5, 0, 12);
+  ctx.bezierCurveTo(22, -5, 10, -18, 0, -5);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawStar(x, y, s) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.beginPath();
+  for(let i = 0; i < 5; i++) {
+    let angle = (i * 4 * Math.PI / 5) - Math.PI/2;
+    let r = i === 0 ? s : s;
+    ctx.lineTo(Math.cos(angle)*s, Math.sin(angle)*s);
+    angle += 2*Math.PI/5;
+    ctx.lineTo(Math.cos(angle)*s*0.4, Math.sin(angle)*s*0.4);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawDiamond(x, y, s) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.beginPath();
+  ctx.moveTo(0, -s);
+  ctx.lineTo(s*0.7, 0);
+  ctx.lineTo(0, s);
+  ctx.lineTo(-s*0.7, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// Mouse events
+canvas.addEventListener('mousedown', e => {
+  saveState();
+  isDrawing = true;
+  const pos = getPos(e);
+  lastX = pos.x;
+  lastY = pos.y;
+  drawBrush(pos.x, pos.y);
+});
+canvas.addEventListener('mousemove', e => {
+  if (!isDrawing) return;
+  const pos = getPos(e);
+  drawBrush(pos.x, pos.y);
+  lastX = pos.x;
+  lastY = pos.y;
+});
+canvas.addEventListener('mouseup', () => { isDrawing = false; lastX = lastY = undefined; });
+canvas.addEventListener('mouseleave', () => { isDrawing = false; lastX = lastY = undefined; });
+
+// Touch events
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  saveState();
+  isDrawing = true;
+  const pos = getPos(e);
+  lastX = pos.x;
+  lastY = pos.y;
+  drawBrush(pos.x, pos.y);
+}, {passive: false});
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!isDrawing) return;
+  const pos = getPos(e);
+  drawBrush(pos.x, pos.y);
+  lastX = pos.x;
+  lastY = pos.y;
+}, {passive: false});
+canvas.addEventListener('touchend', () => { isDrawing = false; lastX = lastY = undefined; });
+
+// Actions
+document.getElementById('btnUndo').onclick = () => {
+  if (history.length > 1) {
+    history.pop();
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.src = history[history.length - 1];
+    setStatus('已撤销 ↩');
+  }
+};
+
+document.getElementById('btnClear').onclick = () => {
+  if (confirm('确定要清除所有妆容吗？')) {
+    history = [];
+    drawFace();
+    setStatus('已清除，重新开始吧~ 🌟');
+  }
+};
+
+document.getElementById('btnEraser').onclick = () => {
+  isEraser = !isEraser;
+  setStatus(isEraser ? '橡皮擦已开启 🧹' : '橡皮擦已关闭');
+};
+
+document.getElementById('btnSave').onclick = () => {
+  const link = document.createElement('a');
+  link.download = '我的妆容_' + Date.now() + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  setStatus('已保存到本地 💾');
+};
+
+document.getElementById('btnRandom').onclick = () => {
+  saveState();
+  // Random lipstick
+  ctx.save();
+  ctx.globalAlpha = 0.6;
+  const lipColors = ['#e91e63','#ff5252','#d81b60','#ad1457','#ff80ab','#c62828'];
+  ctx.fillStyle = lipColors[Math.floor(Math.random()*lipColors.length)];
+  ctx.beginPath();
+  ctx.moveTo(W/2-28, 370);
+  ctx.quadraticCurveTo(W/2-15, 358, W/2, 360);
+  ctx.quadraticCurveTo(W/2+15, 358, W/2+28, 370);
+  ctx.quadraticCurveTo(W/2+15, 376, W/2, 375);
+  ctx.quadraticCurveTo(W/2-15, 376, W/2-28, 370);
+  ctx.fill();
+  ctx.restore();
+
+  // Random eyeshadow
+  ctx.save();
+  ctx.globalAlpha = 0.4;
+  const eyeColors = ['#9c27b0','#ce93d8','#673ab7','#311b92','#e1bee7','#ff6f00'];
+  ctx.fillStyle = eyeColors[Math.floor(Math.random()*eyeColors.length)];
+  let grd = ctx.createRadialGradient(W/2-55, 255, 0, W/2-55, 258, 35);
+  grd.addColorStop(0, ctx.fillStyle);
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(W/2-55, 258, 35, 0, Math.PI*2);
+  ctx.fill();
+  grd = ctx.createRadialGradient(W/2+55, 255, 0, W/2+55, 258, 35);
+  grd.addColorStop(0, ctx.fillStyle);
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(W/2+55, 258, 35, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // Random blush
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  const blushColors = ['#f48fb1','#ff80ab','#f06292','#ec407a'];
+  ctx.fillStyle = blushColors[Math.floor(Math.random()*blushColors.length)];
+  let bg = ctx.createRadialGradient(W/2-90, 320, 0, W/2-90, 320, 35);
+  bg.addColorStop(0, ctx.fillStyle);
+  bg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.arc(W/2-90, 320, 35, 0, Math.PI*2);
+  ctx.fill();
+  bg = ctx.createRadialGradient(W/2+90, 320, 0, W/2+90, 320, 35);
+  bg.addColorStop(0, ctx.fillStyle);
+  bg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.arc(W/2+90, 320, 35, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  setStatus('随机妆容已生成！🎲');
+};
+
+// Presets
+const presets = {
+  natural: {
+    lipstick: '#e8967a', eyeshadow: '#d7ccc8', blush: '#f8bbd0',
+    lipAlpha: 0.5, eyeAlpha: 0.3, blushAlpha: 0.25
+  },
+  party: {
+    lipstick: '#e91e63', eyeshadow: '#9c27b0', blush: '#f06292',
+    lipAlpha: 0.8, eyeAlpha: 0.6, blushAlpha: 0.4
+  },
+  kawaii: {
+    lipstick: '#ff80ab', eyeshadow: '#f8bbd0', blush: '#f48fb1',
+    lipAlpha: 0.7, eyeAlpha: 0.5, blushAlpha: 0.5
+  },
+  cool: {
+    lipstick: '#880e4f', eyeshadow: '#263238', blush: '#bcaaa4',
+    lipAlpha: 0.8, eyeAlpha: 0.6, blushAlpha: 0.2
+  },
+  retro: {
+    lipstick: '#b71c1c', eyeshadow: '#795548', blush: '#d4836a',
+    lipAlpha: 0.9, eyeAlpha: 0.5, blushAlpha: 0.35
+  },
+  fairy: {
+    lipstick: '#e1bee7', eyeshadow: '#b39ddb', blush: '#f3e5f5',
+    lipAlpha: 0.6, eyeAlpha: 0.5, blushAlpha: 0.4
+  }
+};
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.onclick = () => {
+    saveState();
+    const p = presets[btn.dataset.preset];
+    if (!p) return;
+
+    // Apply lipstick
+    ctx.save();
+    ctx.globalAlpha = p.lipAlpha;
+    ctx.fillStyle = p.lipstick;
+    ctx.beginPath();
+    ctx.moveTo(W/2-28, 370);
+    ctx.quadraticCurveTo(W/2-15, 358, W/2, 360);
+    ctx.quadraticCurveTo(W/2+15, 358, W/2+28, 370);
+    ctx.quadraticCurveTo(W/2+15, 376, W/2, 375);
+    ctx.quadraticCurveTo(W/2-15, 376, W/2-28, 370);
+    ctx.fill();
+    ctx.restore();
+
+    // Apply eyeshadow
+    ctx.save();
+    ctx.globalAlpha = p.eyeAlpha;
+    [W/2-55, W/2+55].forEach(ex => {
+      let grd = ctx.createRadialGradient(ex, 255, 0, ex, 258, 35);
+      grd.addColorStop(0, p.eyeshadow);
+      grd.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(ex, 258, 35, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    // Apply blush
+    ctx.save();
+    ctx.globalAlpha = p.blushAlpha;
+    [W/2-90, W/2+90].forEach(bx => {
+      let bg = ctx.createRadialGradient(bx, 320, 0, bx, 320, 30);
+      bg.addColorStop(0, p.blush);
+      bg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.arc(bx, 320, 30, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    setStatus(`已应用妆容: ${btn.textContent.trim()} ✨`);
+  };
+});
+
+// Init
+drawFace();
+updatePalette();
+</script>
+
+</body>
+</html>
