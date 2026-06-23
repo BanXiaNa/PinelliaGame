@@ -1,0 +1,8 @@
+{
+  "name": "搜打撤",
+  "description": "搜索、打击、撤离，战术行动小游戏",
+  "icon": "🔍",
+  "color": "#4caf50",
+  "path": "games/search-strike",
+  "tags": ["战术", "动作"]
+}

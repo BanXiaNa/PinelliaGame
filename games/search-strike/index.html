@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>搜打撤 - 战术小游戏</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a1a;
+  color: #e0e0e0;
+  font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+h1 {
+  margin: 18px 0 6px;
+  font-size: 32px;
+  background: linear-gradient(90deg, #ff4444, #ffaa00, #44ff44);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  letter-spacing: 8px;
+}
+.subtitle { color: #888; font-size: 14px; margin-bottom: 10px; }
+#top-bar {
+  display: flex; gap: 20px; align-items: center;
+  background: #151530; border: 1px solid #333; border-radius: 10px;
+  padding: 8px 20px; margin-bottom: 8px; font-size: 15px;
+}
+#top-bar span { display: flex; align-items: center; gap: 5px; }
+.stat-icon { font-size: 18px; }
+.hp-bar, .mp-bar {
+  width: 100px; height: 14px; background: #222; border-radius: 7px;
+  overflow: hidden; border: 1px solid #444; display: inline-block; vertical-align: middle;
+}
+.hp-fill { height: 100%; background: linear-gradient(90deg, #ff3333, #ff6666); transition: width 0.3s; }
+.mp-fill { height: 100%; background: linear-gradient(90deg, #3366ff, #66aaff); transition: width 0.3s; }
+#game-container {
+  display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;
+  justify-content: center;
+}
+#map-wrapper {
+  position: relative;
+  border: 2px solid #444;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 30px rgba(0,100,255,0.15);
+}
+canvas { display: block; cursor: crosshair; }
+#side-panel {
+  width: 220px; display: flex; flex-direction: column; gap: 8px;
+}
+.panel-box {
+  background: #151530; border: 1px solid #333; border-radius: 10px;
+  padding: 12px;
+}
+.panel-box h3 {
+  font-size: 14px; color: #aaa; margin-bottom: 8px;
+  border-bottom: 1px solid #333; padding-bottom: 4px;
+}
+.btn-row { display: flex; flex-direction: column; gap: 6px; }
+.action-btn {
+  padding: 10px 12px; border: 2px solid #555; border-radius: 8px;
+  background: #1a1a3a; color: #ddd; font-size: 15px; cursor: pointer;
+  font-family: inherit; transition: all 0.15s; display: flex;
+  align-items: center; gap: 8px;
+}
+.action-btn:hover { background: #2a2a5a; transform: translateY(-1px); }
+.action-btn:active { transform: translateY(1px); }
+.action-btn.active { border-color: #ffaa00; background: #2a2a1a; box-shadow: 0 0 10px rgba(255,170,0,0.3); }
+.action-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-icon { font-size: 20px; }
+.btn-info { font-size: 11px; color: #888; }
+#log-box {
+  max-height: 160px; overflow-y: auto; font-size: 12px;
+  line-height: 1.6;
+}
+#log-box::-webkit-scrollbar { width: 4px; }
+#log-box::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+.log-entry { padding: 2px 0; border-bottom: 1px solid #1a1a2a; }
+.log-entry.search { color: #44aaff; }
+.log-entry.attack { color: #ff4444; }
+.log-entry.retreat { color: #44ff44; }
+.log-entry.info { color: #aaa; }
+.log-entry.danger { color: #ff8800; }
+.log-entry.win { color: #ffdd00; font-weight: bold; }
+.log-entry.lose { color: #ff3333; font-weight: bold; }
+#mode-indicator {
+  text-align: center; padding: 6px; border-radius: 8px;
+  font-size: 13px; font-weight: bold; letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+#minimap-box { text-align: center; }
+#minimap { border: 1px solid #333; border-radius: 4px; image-rendering: pixelated; }
+#overlay {
+  display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85); z-index: 100; justify-content: center;
+  align-items: center; flex-direction: column;
+}
+#overlay.show { display: flex; }
+#overlay h2 { font-size: 36px; margin-bottom: 12px; }
+#overlay p { font-size: 16px; color: #aaa; margin-bottom: 20px; }
+#overlay button {
+  padding: 12px 36px; font-size: 18px; border: 2px solid #ffaa00;
+  background: #1a1a3a; color: #ffaa00; border-radius: 10px;
+  cursor: pointer; font-family: inherit; transition: all 0.2s;
+}
+#overlay button:hover { background: #2a2a4a; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.legend-item { font-size: 11px; color: #999; display: flex; align-items: center; gap: 3px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+#turn-info { font-size: 12px; color: #888; text-align: center; margin-top: 4px; }
+.tip { font-size: 11px; color: #666; margin-top: 4px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<h1>⚔️ 搜 打 撤 ⚔️</h1>
+<div class="subtitle">迷雾战术 — 搜索·打击·撤退</div>
+
+<div id="top-bar">
+  <span><span class="stat-icon">❤️</span> 生命 <div class="hp-bar"><div class="hp-fill" id="hp-fill" style="width:100%"></div></div> <b id="hp-text">100</b></span>
+  <span><span class="stat-icon">💧</span> 能量 <div class="mp-bar"><div class="mp-fill" id="mp-fill" style="width:100%"></div></div> <b id="mp-text">100</b></span>
+  <span><span class="stat-icon">🏆</span> 击杀 <b id="kill-text">0</b></span>
+  <span><span class="stat-icon">🔄</span> 回合 <b id="turn-text">1</b></span>
+</div>
+
+<div id="game-container">
+  <div>
+    <div id="mode-indicator" style="background:#1a2a4a;color:#44aaff;">🔍 搜索模式 — 点击迷雾区域探索</div>
+    <div id="map-wrapper">
+      <canvas id="game-canvas"></canvas>
+    </div>
+    <div id="turn-info">WASD/方向键移动 | 点击地图执行当前动作 | 空格键切换模式</div>
+  </div>
+
+  <div id="side-panel">
+    <div class="panel-box">
+      <h3>⚙️ 行动模式</h3>
+      <div class="btn-row">
+        <button class="action-btn active" id="btn-search" onclick="setMode('search')">
+          <span class="btn-icon">🔍</span>
+          <div><b>搜索</b><br><span class="btn-info">揭开迷雾,发现敌人</span></div>
+        </button>
+        <button class="action-btn" id="btn-attack" onclick="setMode('attack')">
+          <span class="btn-icon">⚔️</span>
+          <div><b>打击</b><br><span class="btn-info">攻击范围内的敌人</span></div>
+        </button>
+        <button class="action-btn" id="btn-retreat" onclick="setMode('retreat')">
+          <span class="btn-icon">🏃</span>
+          <div><b>撤退</b><br><span class="btn-info">后撤并恢复生命</span></div>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel-box" id="minimap-box">
+      <h3>🗺️ 小地图</h3>
+      <canvas id="minimap" width="196" height="196"></canvas>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#44aaff"></span>玩家</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ff4444"></span>敌人</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#556633"></span>已探索</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#333"></span>迷雾</div>
+      </div>
+    </div>
+
+    <div class="panel-box">
+      <h3>📜 战斗日志</h3>
+      <div id="log-box"></div>
+    </div>
+
+    <div class="panel-box tip">
+      💡 <b>提示：</b>先搜索迷雾发现敌人，再靠近打击，血量低时及时撤退恢复。击杀所有敌人获胜！
+    </div>
+  </div>
+</div>
+
+<div id="overlay">
+  <h2 id="overlay-title"></h2>
+  <p id="overlay-msg"></p>
+  <button onclick="restartGame()">再来一局</button>
+</div>
+
+<script>
+// ============ GAME CONFIG ============
+const COLS = 30, ROWS = 30;
+const CELL = 24;
+const MAP_W = COLS * CELL, MAP_H = ROWS * CELL;
+const ENEMY_COUNT = 8;
+const SEARCH_RADIUS = 4;
+const ATTACK_RANGE = 2;
+const ATTACK_DMG = [18, 32];
+const ENEMY_DMG = [10, 22];
+const RETREAT_HEAL = 25;
+const RETREAT_COST = 15;
+const SEARCH_COST = 5;
+const ATTACK_COST = 10;
+const TREE_COUNT = 40;
+const ROCK_COUNT = 20;
+
+// ============ STATE ============
+let canvas, ctx, miniCanvas, miniCtx;
+let player, enemies, trees, rocks;
+let fogMap, exploredMap;
+let mode = 'search';
+let turn = 1;
+let kills = 0;
+let gameOver = false;
+let particles = [];
+let shakeTimer = 0;
+let animFrame = 0;
+
+// ============ INIT ============
+function init() {
+  canvas = document.getElementById('game-canvas');
+  ctx = canvas.getContext('2d');
+  canvas.width = MAP_W;
+  canvas.height = MAP_H;
+
+  miniCanvas = document.getElementById('minimap');
+  miniCtx = miniCanvas.getContext('2d');
+
+  canvas.addEventListener('click', onMapClick);
+  document.addEventListener('keydown', onKeyDown);
+
+  restartGame();
+}
+
+function restartGame() {
+  document.getElementById('overlay').classList.remove('show');
+  gameOver = false;
+  turn = 1;
+  kills = 0;
+  mode = 'search';
+  particles = [];
+  shakeTimer = 0;
+
+  // Generate map
+  fogMap = Array.from({length: ROWS}, () => Array(COLS).fill(true));
+  exploredMap = Array.from({length: ROWS}, () => Array(COLS).fill(false));
+
+  // Trees
+  trees = [];
+  for (let i = 0; i < TREE_COUNT; i++) {
+    let pos = randomEmpty();
+    trees.push(pos);
+  }
+
+  // Rocks
+  rocks = [];
+  for (let i = 0; i < ROCK_COUNT; i++) {
+    let pos = randomEmpty();
+    rocks.push(pos);
+  }
+
+  // Player
+  player = { x: Math.floor(COLS / 2), y: Math.floor(ROWS / 2), hp: 100, maxHp: 100, mp: 100, maxMp: 100 };
+
+  // Enemies
+  enemies = [];
+  for (let i = 0; i < ENEMY_COUNT; i++) {
+    let pos;
+    do {
+      pos = randomEmpty();
+    } while (Math.abs(pos.x - player.x) + Math.abs(pos.y - player.y) < 10);
+    enemies.push({ x: pos.x, y: pos.y, hp: 40 + Math.floor(Math.random() * 30), maxHp: 60, alive: true, alerted: false });
+  }
+
+  // Reveal around spawn
+  revealAround(player.x, player.y, 3);
+
+  setMode('search');
+  updateUI();
+  addLog('🏁 任务开始！在迷雾中搜索并消灭所有敌人！', 'info');
+  render();
+}
+
+function randomEmpty() {
+  let pos;
+  do {
+    pos = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+  } while (
+    trees.some(t => t.x === pos.x && t.y === pos.y) ||
+    rocks.some(r => r.x === pos.x && r.y === pos.y) ||
+    (pos.x === player?.x && pos.y === player?.y)
+  );
+  return pos;
+}
+
+// ============ FOG ============
+function revealAround(cx, cy, r) {
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      let nx = cx + dx, ny = cy + dy;
+      if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+        if (dx * dx + dy * dy <= r * r) {
+          fogMap[ny][nx] = false;
+          exploredMap[ny][nx] = true;
+        }
+      }
+    }
+  }
+}
+
+// ============ MODE ============
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('active'));
+  const indicator = document.getElementById('mode-indicator');
+  if (m === 'search') {
+    document.getElementById('btn-search').classList.add('active');
+    indicator.style.background = '#1a2a4a';
+    indicator.style.color = '#44aaff';
+    indicator.textContent = '🔍 搜索模式 — 点击迷雾区域探索';
+  } else if (m === 'attack') {
+    document.getElementById('btn-attack').classList.add('active');
+    indicator.style.background = '#3a1a1a';
+    indicator.style.color = '#ff4444';
+    indicator.textContent = '⚔️ 打击模式 — 点击敌人攻击';
+  } else {
+    document.getElementById('btn-retreat').classList.add('active');
+    indicator.style.background = '#1a3a1a';
+    indicator.style.color = '#44ff44';
+    indicator.textContent = '🏃 撤退模式 — 点击安全位置后撤';
+  }
+}
+
+// ============ INPUT ============
+function onMapClick(e) {
+  if (gameOver) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = Math.floor((e.clientX - rect.left) * scaleX / CELL);
+  const my = Math.floor((e.clientY - rect.top) * scaleY / CELL);
+
+  if (mx < 0 || mx >= COLS || my < 0 || my >= ROWS) return;
+
+  const dist = Math.abs(mx - player.x) + Math.abs(my - player.y);
+
+  if (mode === 'search') {
+    doSearch(mx, my);
+  } else if (mode === 'attack') {
+    doAttack(mx, my);
+  } else if (mode === 'retreat') {
+    doRetreat(mx, my);
+  }
+}
+
+function onKeyDown(e) {
+  if (gameOver) return;
+  let dx = 0, dy = 0;
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') dy = -1;
+  if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') dy = 1;
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') dx = -1;
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') dx = 1;
+
+  if (dx !== 0 || dy !== 0) {
+    e.preventDefault();
+    movePlayer(dx, dy);
+    return;
+  }
+
+  if (e.key === ' ') {
+    e.preventDefault();
+    const modes = ['search', 'attack', 'retreat'];
+    const idx = (modes.indexOf(mode) + 1) % modes.length;
+    setMode(modes[idx]);
+  }
+
+  if (e.key === '1') setMode('search');
+  if (e.key === '2') setMode('attack');
+  if (e.key === '3') setMode('retreat');
+}
+
+function movePlayer(dx, dy) {
+  const nx = player.x + dx, ny = player.y + dy;
+  if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) return;
+  if (trees.some(t => t.x === nx && t.y === ny)) return;
+  if (rocks.some(r => r.x === nx && r.y === ny)) return;
+
+  player.x = nx;
+  player.y = ny;
+  revealAround(nx, ny, 2);
+  endTurn();
+}
+
+// ============ ACTIONS ============
+function doSearch(tx, ty) {
+  // Search reveals area around the PLAYER, click direction guides search focus
+  if (player.mp < SEARCH_COST) {
+    addLog('⚠️ 能量不足！', 'danger');
+    return;
+  }
+
+  player.mp -= SEARCH_COST;
+
+  // Calculate search center: halfway between player and clicked point, biased toward player
+  const scx = Math.round(player.x + (tx - player.x) * 0.5);
+  const scy = Math.round(player.y + (ty - player.y) * 0.5);
+
+  // Clamp to map bounds
+  const clampX = Math.max(0, Math.min(COLS - 1, scx));
+  const clampY = Math.max(0, Math.min(ROWS - 1, scy));
+
+  revealAround(clampX, clampY, SEARCH_RADIUS);
+
+  // Check if we found enemies in the revealed area
+  let found = 0;
+  enemies.forEach(e => {
+    if (e.alive && !e.alerted) {
+      const dx = e.x - clampX, dy = e.y - clampY;
+      if (dx * dx + dy * dy <= SEARCH_RADIUS * SEARCH_RADIUS) {
+        e.alerted = true;
+        found++;
+      }
+    }
+  });
+
+  // Visual effect at search center
+  spawnParticles(clampX * CELL + CELL/2, clampY * CELL + CELL/2, '#44aaff', 15);
+  // Visual rings at player
+  spawnParticles(player.x * CELL + CELL/2, player.y * CELL + CELL/2, '#44aaff', 8);
+
+  if (found > 0) {
+    addLog(`🔍 搜索成功！发现了 ${found} 个敌人！`, 'search');
+  } else {
+    addLog('🔍 搜索完毕，该区域安全。', 'search');
+  }
+
+  endTurn();
+}
+
+function doAttack(tx, ty) {
+  if (player.mp < ATTACK_COST) {
+    addLog('⚠️ 能量不足！', 'danger');
+    return;
+  }
+
+  // Find all alive enemies within attack range (area attack)
+  const targets = enemies.filter(e => {
+    if (!e.alive) return false;
+    const dx = Math.abs(e.x - player.x), dy = Math.abs(e.y - player.y);
+    return dx <= ATTACK_RANGE && dy <= ATTACK_RANGE;
+  });
+
+  if (targets.length === 0) {
+    addLog('⚠️ 攻击范围内没有敌人！靠近敌人后再攻击。', 'danger');
+    return;
+  }
+
+  player.mp -= ATTACK_COST;
+  let totalDmg = 0;
+  let killed = 0;
+
+  targets.forEach(target => {
+    const dmg = randInt(ATTACK_DMG[0], ATTACK_DMG[1]);
+    target.hp -= dmg;
+    target.alerted = true;
+    totalDmg += dmg;
+
+    spawnParticles(target.x * CELL + CELL/2, target.y * CELL + CELL/2, '#ff4444', 12);
+
+    if (target.hp <= 0) {
+      target.alive = false;
+      kills++;
+      killed++;
+      spawnParticles(target.x * CELL + CELL/2, target.y * CELL + CELL/2, '#ffaa00', 25);
+    }
+  });
+
+  shakeTimer = 6;
+
+  if (killed > 0) {
+    addLog(`⚔️ 攻击命中 ${targets.length} 个敌人，共造成 ${totalDmg} 点伤害！击杀 ${killed} 个！(${kills}/${ENEMY_COUNT})`, 'attack');
+  } else {
+    addLog(`⚔️ 攻击命中 ${targets.length} 个敌人，共造成 ${totalDmg} 点伤害！`, 'attack');
+  }
+
+  if (kills >= ENEMY_COUNT) {
+    gameOver = true;
+    showOverlay('🏆 任务完成！', `你用了 ${turn} 回合消灭了所有敌人！`, '#ffdd00');
+    addLog('🏆 胜利！所有敌人已被消灭！', 'win');
+    return;
+  }
+
+  endTurn();
+}
+
+function doRetreat(tx, ty) {
+  if (player.mp < RETREAT_COST) {
+    addLog('⚠️ 能量不足！', 'danger');
+    return;
+  }
+
+  if (isBlocked(tx, ty)) {
+    addLog('⚠️ 目标位置有障碍物！', 'danger');
+    return;
+  }
+
+  const dist = Math.abs(tx - player.x) + Math.abs(ty - player.y);
+  if (dist === 0) {
+    addLog('⚠️ 不能原地撤退！点击远处的位置。', 'danger');
+    return;
+  }
+  if (dist > 8) {
+    addLog('⚠️ 撤退距离太远！最远 8 格。', 'danger');
+    return;
+  }
+
+  // Check line of sight (simple step check)
+  if (!hasLineOfSight(player.x, player.y, tx, ty)) {
+    addLog('⚠️ 撤退路径被障碍物阻挡！', 'danger');
+    return;
+  }
+
+  // Check no enemy at destination
+  if (enemies.some(e => e.alive && e.x === tx && e.y === ty)) {
+    addLog('⚠️ 目标位置有敌人！不能撤退到那里。', 'danger');
+    return;
+  }
+
+  player.mp -= RETREAT_COST;
+
+  // Trail effect
+  for (let i = 0; i <= dist; i++) {
+    const t = i / dist;
+    const ix = Math.round(player.x + (tx - player.x) * t);
+    const iy = Math.round(player.y + (ty - player.y) * t);
+    spawnParticles(ix * CELL + CELL/2, iy * CELL + CELL/2, '#44ff44', 3);
+  }
+
+  player.x = tx;
+  player.y = ty;
+  const healAmt = Math.min(RETREAT_HEAL, player.maxHp - player.hp);
+  player.hp = Math.min(player.maxHp, player.hp + RETREAT_HEAL);
+  revealAround(tx, ty, 2);
+
+  if (healAmt > 0) {
+    addLog(`🏃 撤退成功！移动 ${dist} 格，恢复 ${healAmt} 点生命。`, 'retreat');
+  } else {
+    addLog(`🏃 撤退成功！移动 ${dist} 格。`, 'retreat');
+  }
+
+  endTurn();
+}
+
+// Simple line-of-sight check (Bresenham)
+function hasLineOfSight(x0, y0, x1, y1) {
+  let dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  let sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  let x = x0, y = y0;
+  while (true) {
+    if (x === x1 && y === y1) return true;
+    // Allow start and end, block intermediate
+    if (!(x === x0 && y === y0) && isBlocked(x, y)) return false;
+    let e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x += sx; }
+    if (e2 < dx) { err += dx; y += sy; }
+  }
+}
+
+function endTurn() {
+  turn++;
+
+  // Enemy turns
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    const dist = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
+
+    // Alert if close
+    if (dist <= 5) e.alerted = true;
+
+    if (e.alerted) {
+      // Move toward player
+      if (dist <= 1) {
+        // Attack!
+        const dmg = randInt(ENEMY_DMG[0], ENEMY_DMG[1]);
+        player.hp -= dmg;
+        addLog(`💥 敌人攻击了你！受到 ${dmg} 点伤害！`, 'danger');
+        spawnParticles(player.x * CELL + CELL/2, player.y * CELL + CELL/2, '#ff8800', 10);
+        shakeTimer = 4;
+      } else {
+        // Move closer
+        let bestDx = 0, bestDy = 0, bestDist = dist;
+        for (const [ddx, ddy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
+          const nx = e.x + ddx, ny = e.y + ddy;
+          if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+          if (isBlocked(nx, ny)) continue;
+          if (enemies.some(o => o !== e && o.alive && o.x === nx && o.y === ny)) continue;
+          const d = Math.abs(nx - player.x) + Math.abs(ny - player.y);
+          if (d < bestDist) {
+            bestDist = d;
+            bestDx = ddx;
+            bestDy = ddy;
+          }
+        }
+        e.x += bestDx;
+        e.y += bestDy;
+      }
+    } else {
+      // Random patrol
+      if (Math.random() < 0.3) {
+        const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
+        const [ddx, ddy] = dirs[Math.floor(Math.random() * 4)];
+        const nx = e.x + ddx, ny = e.y + ddy;
+        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && !isBlocked(nx, ny)) {
+          if (!enemies.some(o => o !== e && o.alive && o.x === nx && o.y === ny)) {
+            e.x += ddx;
+            e.y += ddy;
+          }
+        }
+      }
+    }
+  });
+
+  // Regen
+  player.mp = Math.min(player.maxMp, player.mp + 8);
+
+  // Check death
+  if (player.hp <= 0) {
+    player.hp = 0;
+    gameOver = true;
+    showOverlay('💀 任务失败', `你在第 ${turn} 回合阵亡，击杀 ${kills}/${ENEMY_COUNT} 个敌人。`, '#ff3333');
+    addLog('💀 你被击倒了...', 'lose');
+  }
+
+  updateUI();
+  render();
+}
+
+// ============ HELPERS ============
+function isBlocked(x, y) {
+  return trees.some(t => t.x === x && t.y === y) || rocks.some(r => r.x === x && r.y === y);
+}
+
+function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+
+function addLog(msg, cls) {
+  const box = document.getElementById('log-box');
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + (cls || 'info');
+  div.textContent = msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 0.5) * 6,
+      life: 20 + Math.random() * 15,
+      color,
+      size: 2 + Math.random() * 3
+    });
+  }
+}
+
+function showOverlay(title, msg, color) {
+  const ov = document.getElementById('overlay');
+  ov.classList.add('show');
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-title').style.color = color;
+  document.getElementById('overlay-msg').textContent = msg;
+}
+
+// ============ UI ============
+function updateUI() {
+  document.getElementById('hp-fill').style.width = (player.hp / player.maxHp * 100) + '%';
+  document.getElementById('mp-fill').style.width = (player.mp / player.maxMp * 100) + '%';
+  document.getElementById('hp-text').textContent = Math.max(0, player.hp);
+  document.getElementById('mp-text').textContent = Math.max(0, player.mp);
+  document.getElementById('kill-text').textContent = kills + '/' + ENEMY_COUNT;
+  document.getElementById('turn-text').textContent = turn;
+}
+
+// ============ RENDER ============
+function render() {
+  animFrame++;
+
+  // Shake
+  let sx = 0, sy = 0;
+  if (shakeTimer > 0) {
+    sx = (Math.random() - 0.5) * shakeTimer * 2;
+    sy = (Math.random() - 0.5) * shakeTimer * 2;
+    shakeTimer--;
+  }
+
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  // Background
+  ctx.fillStyle = '#1a2a1a';
+  ctx.fillRect(0, 0, MAP_W, MAP_H);
+
+  // Grid
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const px = x * CELL, py = y * CELL;
+
+      // Ground
+      if (!fogMap[y][x]) {
+        const shade = ((x + y) % 2 === 0) ? '#2a3a2a' : '#253525';
+        ctx.fillStyle = shade;
+        ctx.fillRect(px, py, CELL, CELL);
+      }
+    }
+  }
+
+  // Trees
+  trees.forEach(t => {
+    if (!fogMap[t.y][t.x]) {
+      ctx.fillStyle = '#336633';
+      ctx.fillRect(t.x * CELL + 2, t.y * CELL + 2, CELL - 4, CELL - 4);
+      ctx.fillStyle = '#448844';
+      ctx.fillRect(t.x * CELL + 5, t.y * CELL + 4, CELL - 10, CELL - 8);
+    }
+  });
+
+  // Rocks
+  rocks.forEach(r => {
+    if (!fogMap[r.y][r.x]) {
+      ctx.fillStyle = '#555566';
+      ctx.fillRect(r.x * CELL + 3, r.y * CELL + 3, CELL - 6, CELL - 6);
+      ctx.fillStyle = '#666677';
+      ctx.fillRect(r.x * CELL + 5, r.y * CELL + 5, CELL - 10, CELL - 10);
+    }
+  });
+
+  // Enemies
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    if (fogMap[e.y][e.x]) return;
+    const ex = e.x * CELL, ey = e.y * CELL;
+
+    // Highlight if in attack range and in attack mode
+    const inRange = mode === 'attack' &&
+      Math.abs(e.x - player.x) <= ATTACK_RANGE &&
+      Math.abs(e.y - player.y) <= ATTACK_RANGE;
+    if (inRange) {
+      ctx.strokeStyle = 'rgba(255,68,68,0.8)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(ex + 1, ey + 1, CELL - 2, CELL - 2);
+      // Glow
+      ctx.fillStyle = 'rgba(255,0,0,0.15)';
+      ctx.fillRect(ex, ey, CELL, CELL);
+    }
+
+    // Body
+    ctx.fillStyle = e.alerted ? '#cc2222' : '#aa4444';
+    ctx.fillRect(ex + 4, ey + 4, CELL - 8, CELL - 8);
+
+    // Alert indicator
+    if (e.alerted) {
+      ctx.fillStyle = '#ff4444';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('!', ex + CELL/2 - 2, ey - 2);
+    }
+
+    // HP bar
+    const hpPct = e.hp / e.maxHp;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(ex + 2, ey + CELL - 5, CELL - 4, 3);
+    ctx.fillStyle = hpPct > 0.5 ? '#44cc44' : hpPct > 0.25 ? '#cccc44' : '#cc4444';
+    ctx.fillRect(ex + 2, ey + CELL - 5, (CELL - 4) * hpPct, 3);
+  });
+
+  // Player
+  const px = player.x * CELL, py = player.y * CELL;
+  ctx.fillStyle = '#2266cc';
+  ctx.fillRect(px + 3, py + 3, CELL - 6, CELL - 6);
+  ctx.fillStyle = '#44aaff';
+  ctx.fillRect(px + 5, py + 5, CELL - 10, CELL - 10);
+
+  // Player direction indicator
+  const pulse = Math.sin(animFrame * 0.1) * 2;
+  ctx.strokeStyle = '#44aaff';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(px + 1 + pulse, py + 1 + pulse, CELL - 2 - pulse*2, CELL - 2 - pulse*2);
+
+  // Range indicator
+  if (mode === 'search') {
+    ctx.strokeStyle = 'rgba(68,170,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(px + CELL/2, py + CELL/2, SEARCH_RADIUS * CELL + CELL/2, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (mode === 'attack') {
+    // Square range for area attack
+    ctx.strokeStyle = 'rgba(255,68,68,0.4)';
+    ctx.fillStyle = 'rgba(255,0,0,0.05)';
+    ctx.lineWidth = 1;
+    const ar = ATTACK_RANGE;
+    ctx.fillRect((player.x - ar) * CELL, (player.y - ar) * CELL, (ar * 2 + 1) * CELL, (ar * 2 + 1) * CELL);
+    ctx.strokeRect((player.x - ar) * CELL, (player.y - ar) * CELL, (ar * 2 + 1) * CELL, (ar * 2 + 1) * CELL);
+  }
+
+  // Fog of war
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (fogMap[y][x]) {
+        ctx.fillStyle = exploredMap[y][x] ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.88)';
+        ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+      }
+    }
+  }
+
+  // Particles
+  particles = particles.filter(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+    p.vx *= 0.95;
+    p.vy *= 0.95;
+    if (p.life <= 0) return false;
+    ctx.globalAlpha = p.life / 35;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+    ctx.globalAlpha = 1;
+    return true;
+  });
+
+  ctx.restore();
+
+  // Minimap
+  renderMinimap();
+
+  if (!gameOver) requestAnimationFrame(render);
+}
+
+function renderMinimap() {
+  const scale = 196 / COLS;
+  miniCtx.fillStyle = '#111';
+  miniCtx.fillRect(0, 0, 196, 196);
+
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (exploredMap[y][x]) {
+        miniCtx.fillStyle = fogMap[y][x] ? '#222' : '#334433';
+        miniCtx.fillRect(x * scale, y * scale, scale, scale);
+      }
+    }
+  }
+
+  // Trees on minimap
+  trees.forEach(t => {
+    if (!fogMap[t.y][t.x]) {
+      miniCtx.fillStyle = '#2a5a2a';
+      miniCtx.fillRect(t.x * scale, t.y * scale, scale, scale);
+    }
+  });
+
+  // Enemies on minimap
+  enemies.forEach(e => {
+    if (!e.alive || fogMap[e.y][e.x]) return;
+    miniCtx.fillStyle = '#ff4444';
+    miniCtx.fillRect(e.x * scale, e.y * scale, scale * 1.5, scale * 1.5);
+  });
+
+  // Player on minimap
+  miniCtx.fillStyle = '#44aaff';
+  miniCtx.fillRect(player.x * scale - 1, player.y * scale - 1, scale * 2, scale * 2);
+}
+
+// ============ START ============
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
