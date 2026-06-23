@@ -1,0 +1,8 @@
+{
+  "name": "买房预算计算器",
+  "description": "帮你计算买房预算和贷款方案的工具",
+  "icon": "🏠",
+  "color": "#1565c0",
+  "path": "games/house-budget",
+  "tags": ["工具", "模拟"]
+}

@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏠 盖房子预算计算器</title>
+<style>
+  :root {
+    --primary: #2c5f2d;
+    --primary-light: #4a8c4b;
+    --accent: #d4a843;
+    --bg: #f5f0e8;
+    --card: #ffffff;
+    --text: #2d2d2d;
+    --text-light: #666;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--primary) 0%, #1a3a1a 100%);
+    color: white;
+    padding: 28px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+    animation: shimmer 8s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(30px, -20px); }
+  }
+  .header h1 { font-size: 2em; font-weight: 700; position: relative; }
+  .header p { font-size: 1em; opacity: 0.85; margin-top: 6px; position: relative; }
+
+  /* Layout */
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 30px 24px;
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 960px) {
+    .container { grid-template-columns: 1fr; }
+  }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 26px;
+  }
+  .card-title {
+    font-size: 1.15em;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary);
+  }
+  .card-title .icon { font-size: 1.3em; }
+
+  /* Form */
+  .form-group { margin-bottom: 20px; }
+  .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.92em;
+    color: var(--text);
+  }
+
+  /* Select */
+  .select-wrap {
+    position: relative;
+  }
+  .select-wrap select {
+    width: 100%;
+    padding: 11px 14px;
+    border: 2px solid #e0dbd2;
+    border-radius: 10px;
+    font-size: 0.95em;
+    background: #faf8f4;
+    color: var(--text);
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .select-wrap select:focus {
+    outline: none;
+    border-color: var(--primary-light);
+  }
+  .select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text-light);
+  }
+
+  /* Slider */
+  .slider-group { margin-bottom: 20px; }
+  .slider-group label {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.92em;
+  }
+  .slider-val {
+    color: var(--primary);
+    font-weight: 700;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right, var(--primary-light), var(--accent));
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    cursor: pointer;
+  }
+
+  /* Checkbox grid */
+  .check-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border: 2px solid #e8e4dc;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.88em;
+    user-select: none;
+  }
+  .check-item:hover { border-color: var(--primary-light); }
+  .check-item.active {
+    border-color: var(--primary);
+    background: #f0f7f0;
+  }
+  .check-item input { display: none; }
+  .check-item .chk {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .check-item.active .chk {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+  }
+
+  /* Button */
+  .btn-calc {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 15px rgba(44,95,45,0.3);
+    margin-top: 6px;
+  }
+  .btn-calc:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(44,95,45,0.4);
+  }
+  .btn-calc:active { transform: translateY(0); }
+
+  /* Right panel */
+  .right-panel { display: flex; flex-direction: column; gap: 24px; }
+
+  /* Canvas */
+  .canvas-wrap {
+    background: linear-gradient(180deg, #e8f4fd 0%, #d4eaf7 40%, #8bc48a 40%, #6aad69 100%);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    min-height: 360px;
+  }
+  .canvas-wrap canvas {
+    width: 100%;
+    height: 360px;
+    display: block;
+  }
+  .canvas-label {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    background: rgba(255,255,255,0.85);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  /* Budget */
+  .budget-total {
+    text-align: center;
+    padding: 24px;
+    background: linear-gradient(135deg, #fdf8ed 0%, #f5edd6 100%);
+    border-radius: var(--radius);
+    border: 2px solid var(--accent);
+  }
+  .budget-total .label { font-size: 0.95em; color: var(--text-light); margin-bottom: 4px; }
+  .budget-total .amount {
+    font-size: 2.6em;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1.1;
+  }
+  .budget-total .unit { font-size: 0.5em; color: var(--text-light); font-weight: 500; }
+  .budget-total .sub {
+    font-size: 0.88em;
+    color: var(--text-light);
+    margin-top: 6px;
+  }
+
+  /* Breakdown */
+  .breakdown { display: flex; flex-direction: column; gap: 10px; }
+  .bd-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #faf8f4;
+    border-radius: 10px;
+  }
+  .bd-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .bd-name { flex: 1; font-size: 0.9em; font-weight: 500; }
+  .bd-pct { font-size: 0.82em; color: var(--text-light); min-width: 36px; text-align: right; }
+  .bd-val { font-weight: 700; font-size: 0.95em; min-width: 100px; text-align: right; color: var(--primary); }
+
+  /* Pie */
+  .pie-section {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .pie-wrap { position: relative; width: 200px; height: 200px; flex-shrink: 0; }
+  .pie-wrap canvas { width: 200px; height: 200px; }
+  .pie-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 0.78em;
+    color: var(--text-light);
+  }
+  .pie-center strong {
+    display: block;
+    font-size: 1.4em;
+    color: var(--text);
+  }
+
+  /* Hidden by default */
+  .result-section { display: none; }
+  .result-section.show { display: flex; flex-direction: column; gap: 24px; animation: fadeIn 0.5s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Tips */
+  .tips {
+    background: #f0f7f0;
+    border-left: 4px solid var(--primary-light);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    font-size: 0.85em;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .tips strong { color: var(--primary); }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-light);
+    font-size: 0.82em;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--primary);
+    color: white;
+    padding: 12px 28px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.92em;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    transition: transform 0.4s ease;
+    z-index: 100;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏠 盖房子预算计算器</h1>
+  <p>选择您的房屋参数，智能生成设计方案与详细预算</p>
+</div>
+
+<div class="container">
+  <!-- Left: Form -->
+  <div>
+    <div class="card">
+      <div class="card-title"><span class="icon">📐</span> 房屋参数配置</div>
+
+      <div class="form-group">
+        <label>🏘️ 房屋类型</label>
+        <div class="select-wrap">
+          <select id="houseType">
+            <option value="villa">独栋别墅</option>
+            <option value="townhouse">联排别墅</option>
+            <option value="duplex">双拼别墅</option>
+            <option value="courtyard">中式四合院</option>
+            <option value="farmhouse">现代自建房</option>
+            <option value="apartment">公寓楼</option>
+            <option value="cottage">田园小屋</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>📍 建设地点</label>
+        <div class="select-wrap">
+          <select id="location">
+            <option value="tier1">一线城市（北上广深）</option>
+            <option value="tier2">二线城市</option>
+            <option value="tier3" selected>三线城市</option>
+            <option value="county">县城</option>
+            <option value="rural">农村</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>🧱 建筑材料等级</label>
+        <div class="select-wrap">
+          <select id="material">
+            <option value="economy">经济型（基本材料）</option>
+            <option value="standard" selected>标准型（主流品牌）</option>
+            <option value="quality">高品质（知名品牌）</option>
+            <option value="luxury">豪华型（进口高端）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <label>
+          <span>📏 建筑面积</span>
+          <span class="slider-val" id="areaVal">200 m²</span>
+        </label>
+        <input type="range" id="area" min="60" max="800" value="200" step="10">
+      </div>
+
+      <div class="slider-group">
+        <label>
+          <span>🏢 楼层数</span>
+          <span class="slider-val" id="floorVal">2 层</span>
+        </label>
+        <input type="range" id="floors" min="1" max="5" value="2" step="1">
+      </div>
+
+      <div class="form-group">
+        <label>✨ 附加配置</label>
+        <div class="check-grid">
+          <label class="check-item" onclick="toggleCheck(this)">
+            <input type="checkbox" name="feature" value="garage">
+            <span class="chk">✓</span>
+            <span>🚗 车库</span>
+          </label>
+          <label class="check-item" onclick="toggleCheck(this)">
+            <input type="checkbox" name="feature" value="garden">
+            <span class="chk">✓</span>
+            <span>🌿 花园庭院</span>
+          </label>
+          <label class="check-item" onclick="toggleCheck(this)">
+            <input type="checkbox" name="feature" value="pool">
+            <span class="chk">✓</span>
+            <span>🏊 游泳池</span>
+          </label>
+          <label class="check-item" onclick="toggleCheck(this)">
+            <input type="checkbox" name="feature" value="basement">
+            <span class="chk">✓</span>
+            <span>🏠 地下室</span>
+          </label>
+          <label class="check-item" onclick="toggleCheck(this)">
+            <input type="checkbox" name="feature" value="elevator">
+            <span class="chk">✓</span>
+            <span>🛗 电梯</span>
+          </label>
+          <label class="check-item" onclick="toggleCheck(this)">
+            <input type="checkbox" name="feature" value="smart">
+            <span class="chk">✓</span>
+            <span>🤖 智能家居</span>
+          </label>
+          <label class="check-item" onclick="toggleCheck(this)">
+            <input type="checkbox" name="feature" value="solar">
+            <span class="chk">✓</span>
+            <span>☀️ 太阳能</span>
+          </label>
+          <label class="check-item" onclick="toggleCheck(this)">
+            <input type="checkbox" name="feature" value="fireplace">
+            <span class="chk">✓</span>
+            <span>🔥 壁炉</span>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn-calc" onclick="calculate()">🔨 开始计算预算</button>
+    </div>
+
+    <div class="tips" style="margin-top: 20px;">
+      <strong>💡 温馨提示：</strong><br>
+      • 预算仅供参考，实际造价受地区、市场行情等因素影响<br>
+      • 建议在预算基础上预留 15-20% 的应急资金<br>
+      • 一线城市地价通常占总成本的 40-60%<br>
+      • 选择材料时建议注重性价比，避免过度装修
+    </div>
+  </div>
+
+  <!-- Right: Results -->
+  <div class="right-panel">
+    <!-- Default info -->
+    <div class="card" id="defaultPanel">
+      <div class="card-title"><span class="icon">📊</span> 设计预览</div>
+      <div class="canvas-wrap">
+        <canvas id="houseCanvas" width="800" height="400"></canvas>
+        <div class="canvas-label">🎨 实时预览</div>
+      </div>
+    </div>
+
+    <!-- Results (hidden initially) -->
+    <div class="result-section" id="resultSection">
+      <div class="card">
+        <div class="card-title"><span class="icon">🎨</span> 房屋设计预览</div>
+        <div class="canvas-wrap">
+          <canvas id="resultCanvas" width="800" height="400"></canvas>
+          <div class="canvas-label" id="designLabel">设计方案</div>
+        </div>
+      </div>
+
+      <div class="budget-total">
+        <div class="label">预估总造价</div>
+        <div class="amount" id="totalBudget">¥0</div>
+        <div class="sub" id="budgetSub"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📊</span> 费用构成</div>
+        <div class="pie-section">
+          <div class="pie-wrap">
+            <canvas id="pieCanvas" width="200" height="200"></canvas>
+            <div class="pie-center">
+              <strong id="pieTotal">-</strong>
+              总预算
+            </div>
+          </div>
+          <div class="breakdown" id="breakdown"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> 详细预算清单</div>
+        <div id="detailList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  🏠 盖房子预算计算器 · 数据仅供参考，实际价格以当地市场为准 · 2026
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== Data Models =====
+const HOUSE_TYPES = {
+  villa:      { name: '独栋别墅',   base: 3200, icon: '🏡', desc: '独立庭院，私密性好' },
+  townhouse:  { name: '联排别墅',   base: 2800, icon: '🏘️', desc: '左右相连，社区感强' },
+  duplex:     { name: '双拼别墅',   base: 3000, icon: '🏠', desc: '两户一体，性价比高' },
+  courtyard:  { name: '中式四合院', base: 3500, icon: '🏯', desc: '传统格局，文化底蕴' },
+  farmhouse:  { name: '现代自建房', base: 2200, icon: '🏗️', desc: '灵活设计，经济实用' },
+  apartment:  { name: '公寓楼',     base: 2600, icon: '🏢', desc: '多层住宅，空间集约' },
+  cottage:    { name: '田园小屋',   base: 2000, icon: '🛖', desc: '自然风格，温馨舒适' }
+};
+
+const LOCATIONS = {
+  tier1:  { name: '一线城市', mult: 1.6, land: 8000 },
+  tier2:  { name: '二线城市', mult: 1.25, land: 4000 },
+  tier3:  { name: '三线城市', mult: 1.0, land: 2000 },
+  county: { name: '县城',     mult: 0.8, land: 800 },
+  rural:  { name: '农村',     mult: 0.6, land: 200 }
+};
+
+const MATERIALS = {
+  economy:  { name: '经济型', mult: 0.75 },
+  standard: { name: '标准型', mult: 1.0 },
+  quality:  { name: '高品质', mult: 1.35 },
+  luxury:   { name: '豪华型', mult: 1.8 }
+};
+
+const FEATURES = {
+  garage:    { name: '车库',       price: 80000,  pct: 0.03 },
+  garden:    { name: '花园庭院',   price: 60000,  pct: 0.025 },
+  pool:      { name: '游泳池',     price: 150000, pct: 0.05 },
+  basement:  { name: '地下室',     price: 120000, pct: 0.04 },
+  elevator:  { name: '电梯',       price: 200000, pct: 0.06 },
+  smart:     { name: '智能家居',   price: 80000,  pct: 0.025 },
+  solar:     { name: '太阳能系统', price: 50000,  pct: 0.02 },
+  fireplace: { name: '壁炉',       price: 25000,  pct: 0.01 }
+};
+
+const COLORS = {
+  structure:  { name: '主体结构',   color: '#2c5f2d' },
+  exterior:   { name: '外墙装饰',   color: '#4a8c4b' },
+  interior:   { name: '室内装修',   color: '#d4a843' },
+  electrical: { name: '水电暖通',   color: '#5b8db8' },
+  foundation: { name: '地基基础',   color: '#8b6f47' },
+  roof:       { name: '屋顶工程',   color: '#c0392b' },
+  doors:      { name: '门窗工程',   color: '#8e44ad' },
+  feature:    { name: '附加配置',   color: '#e67e22' },
+  land:       { name: '土地费用',   color: '#1abc9c' },
+  design:     { name: '设计/管理',  color: '#95a5a6' }
+};
+
+// ===== Helpers =====
+function fmt(n) {
+  if (n >= 10000) return (n / 10000).toFixed(2) + ' 万';
+  return n.toLocaleString('zh-CN');
+}
+function fmtY(n) { return '¥' + fmt(n); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function toggleCheck(el) {
+  el.classList.toggle('active');
+}
+
+function getSelected(name) {
+  return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(c => c.value);
+}
+
+// ===== Drawing =====
+function drawHouse(canvas, config) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Sky gradient
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.6);
+  sky.addColorStop(0, '#87CEEB');
+  sky.addColorStop(1, '#b8e4f9');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H * 0.65);
+
+  // Sun
+  ctx.fillStyle = '#FFD700';
+  ctx.beginPath();
+  ctx.arc(W - 100, 70, 35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFF8DC';
+  ctx.beginPath();
+  ctx.arc(W - 100, 70, 28, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Clouds
+  drawCloud(ctx, 100, 60, 0.8);
+  drawCloud(ctx, 350, 40, 0.6);
+  drawCloud(ctx, 550, 80, 0.7);
+
+  // Ground
+  const groundY = H * 0.62;
+  const grd = ctx.createLinearGradient(0, groundY, 0, H);
+  grd.addColorStop(0, '#6aad69');
+  grd.addColorStop(0.3, '#5a9d59');
+  grd.addColorStop(1, '#4a8d49');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, groundY, W, H - groundY);
+
+  // Ground texture
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    ctx.moveTo(0, groundY + i * 12 + 6);
+    ctx.lineTo(W, groundY + i * 12 + 6);
+    ctx.stroke();
+  }
+
+  // Path
+  ctx.fillStyle = '#c9b896';
+  ctx.beginPath();
+  ctx.moveTo(W/2 - 30, H);
+  ctx.lineTo(W/2 + 30, H);
+  ctx.lineTo(W/2 + 15, groundY + 20);
+  ctx.lineTo(W/2 - 15, groundY + 20);
+  ctx.fill();
+
+  // Draw house based on type
+  const hx = W / 2, hy = groundY;
+  const floors = config.floors || 2;
+
+  if (config.type === 'courtyard') {
+    drawCourtyard(ctx, hx, hy, floors, config);
+  } else if (config.type === 'apartment') {
+    drawApartment(ctx, hx, hy, floors, config);
+  } else if (config.type === 'cottage') {
+    drawCottage(ctx, hx, hy, config);
+  } else {
+    drawModernHouse(ctx, hx, hy, floors, config);
+  }
+
+  // Features
+  if (config.hasGarden) drawGarden(ctx, hx, hy, W, H);
+  if (config.hasPool) drawPool(ctx, hx + 150, hy + 20);
+  if (config.hasGarage) drawGarage(ctx, hx - 160, hy, config);
+  if (config.hasSolar) drawSolar(ctx, hx, hy, floors);
+}
+
+function drawCloud(ctx, x, y, s) {
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  ctx.arc(x, y, 20 * s, 0, Math.PI * 2);
+  ctx.arc(x + 25 * s, y - 8 * s, 16 * s, 0, Math.PI * 2);
+  ctx.arc(x + 50 * s, y, 22 * s, 0, Math.PI * 2);
+  ctx.arc(x + 25 * s, y + 5 * s, 18 * s, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawModernHouse(ctx, cx, groundY, floors, config) {
+  const bw = 120 + (floors - 1) * 10;
+  const bh = 50 + (floors - 1) * 30;
+  const rx = cx - bw / 2;
+  const ry = groundY - bh;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  ctx.beginPath();
+  ctx.moveTo(rx + bw + 20, groundY);
+  ctx.lineTo(rx + bw + 40, groundY);
+  ctx.lineTo(rx + bw + 10, groundY + 15);
+  ctx.lineTo(rx - 10, groundY + 15);
+  ctx.fill();
+
+  // Main body
+  const wallGrad = ctx.createLinearGradient(rx, ry, rx + bw, ry);
+  wallGrad.addColorStop(0, '#f5f0e8');
+  wallGrad.addColorStop(1, '#e8e0d0');
+  ctx.fillStyle = wallGrad;
+  ctx.fillRect(rx, ry, bw, bh);
+
+  // Wall outline
+  ctx.strokeStyle = '#c0b8a8';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rx, ry, bw, bh);
+
+  // Floor lines
+  const fh = bh / floors;
+  for (let i = 1; i < floors; i++) {
+    ctx.beginPath();
+    ctx.moveTo(rx, ry + fh * i);
+    ctx.lineTo(rx + bw, ry + fh * i);
+    ctx.strokeStyle = '#d0c8b8';
+    ctx.stroke();
+  }
+
+  // Windows
+  const winColor = '#87CEEB';
+  for (let f = 0; f < floors; f++) {
+    const wy = ry + fh * f + fh * 0.2;
+    const wh = fh * 0.55;
+    const ww = 18;
+    const gap = (bw - 4 * ww) / 5;
+    for (let w = 0; w < 4; w++) {
+      const wx = rx + gap + w * (ww + gap);
+      ctx.fillStyle = winColor;
+      ctx.fillRect(wx, wy, ww, wh);
+      ctx.strokeStyle = '#a0a0a0';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(wx, wy, ww, wh);
+      // Cross
+      ctx.beginPath();
+      ctx.moveTo(wx + ww/2, wy);
+      ctx.lineTo(wx + ww/2, wy + wh);
+      ctx.moveTo(wx, wy + wh/2);
+      ctx.lineTo(wx + ww, wy + wh/2);
+      ctx.stroke();
+    }
+  }
+
+  // Door
+  const dw = 24, dh = 36;
+  const dx = cx - dw / 2, dy = groundY - dh;
+  ctx.fillStyle = '#8B4513';
+  ctx.fillRect(dx, dy, dw, dh);
+  ctx.strokeStyle = '#654321';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(dx, dy, dw, dh);
+  ctx.fillStyle = '#DAA520';
+  ctx.beginPath();
+  ctx.arc(dx + dw - 5, dy + dh / 2, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Roof
+  const roofOverhang = 18;
+  ctx.fillStyle = '#c0392b';
+  ctx.beginPath();
+  ctx.moveTo(rx - roofOverhang, ry);
+  ctx.lineTo(rx + bw / 2, ry - 40);
+  ctx.lineTo(rx + bw + roofOverhang, ry);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#a93226';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Roof ridge
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.moveTo(rx + bw / 2 - 3, ry - 40);
+  ctx.lineTo(rx + bw / 2, ry - 44);
+  ctx.lineTo(rx + bw / 2 + 3, ry - 40);
+  ctx.fill();
+
+  // Chimney
+  if (config.hasFireplace || floors >= 2) {
+    ctx.fillStyle = '#8B7355';
+    ctx.fillRect(rx + bw * 0.7, ry - 55, 14, 25);
+    ctx.fillStyle = '#6B5335';
+    ctx.fillRect(rx + bw * 0.7 - 2, ry - 55, 18, 5);
+  }
+}
+
+function drawCourtyard(ctx, cx, groundY, floors, config) {
+  const w = 200, h = 55;
+  const rx = cx - w/2, ry = groundY - h;
+
+  // Main building (north)
+  ctx.fillStyle = '#f0e6d3';
+  ctx.fillRect(rx, ry, w, h);
+  ctx.strokeStyle = '#c0a882';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rx, ry, w, h);
+
+  // Roof - traditional curved
+  ctx.fillStyle = '#8B4513';
+  ctx.beginPath();
+  ctx.moveTo(rx - 15, ry);
+  ctx.quadraticCurveTo(rx + w/2, ry - 50, rx + w + 15, ry);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#6B3410';
+  ctx.stroke();
+
+  // Eave decoration
+  ctx.fillStyle = '#c0392b';
+  ctx.fillRect(rx - 15, ry - 3, w + 30, 6);
+
+  // Windows
+  for (let i = 0; i < 5; i++) {
+    const wx = rx + 20 + i * 36;
+    ctx.fillStyle = '#87CEEB';
+    ctx.fillRect(wx, ry + 12, 20, 28);
+    // Lattice pattern
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(wx + 10, ry + 12);
+    ctx.lineTo(wx + 10, ry + 40);
+    ctx.moveTo(wx, ry + 26);
+    ctx.lineTo(wx + 20, ry + 26);
+    ctx.stroke();
+  }
+
+  // Door (center)
+  ctx.fillStyle = '#c0392b';
+  ctx.fillRect(cx - 14, ry + 20, 28, h - 20);
+  ctx.strokeStyle = '#a93226';
+  ctx.strokeRect(cx - 14, ry + 20, 28, h - 20);
+
+  // East/West wings
+  const sideW = 50, sideH = 45;
+  // West
+  ctx.fillStyle = '#f0e6d3';
+  ctx.fillRect(rx - sideW + 5, ry + 10, sideW - 5, sideH);
+  ctx.strokeRect(rx - sideW + 5, ry + 10, sideW - 5, sideH);
+  ctx.fillStyle = '#8B4513';
+  ctx.beginPath();
+  ctx.moveTo(rx - sideW + 5, ry + 10);
+  ctx.quadraticCurveTo(rx - sideW/2 + 5, ry - 20, rx + 5, ry + 10);
+  ctx.fill();
+  // East
+  ctx.fillStyle = '#f0e6d3';
+  ctx.fillRect(rx + w - 5, ry + 10, sideW - 5, sideH);
+  ctx.strokeRect(rx + w - 5, ry + 10, sideW - 5, sideH);
+  ctx.fillStyle = '#8B4513';
+  ctx.beginPath();
+  ctx.moveTo(rx + w - 5, ry + 10);
+  ctx.quadraticCurveTo(rx + w + sideW/2 - 5, ry - 20, rx + w + sideW - 5, ry + 10);
+  ctx.fill();
+
+  // Courtyard floor
+  ctx.fillStyle = '#d4c8a8';
+  ctx.globalAlpha = 0.4;
+  ctx.fillRect(rx - sideW + 10, groundY - 5, w + sideW * 2 - 20, 10);
+  ctx.globalAlpha = 1;
+
+  // Gate (south)
+  ctx.fillStyle = '#c0392b';
+  ctx.fillRect(cx - 15, groundY - 35, 30, 35);
+  ctx.strokeStyle = '#a93226';
+  ctx.strokeRect(cx - 15, groundY - 35, 30, 35);
+  ctx.fillStyle = '#DAA520';
+  ctx.beginPath();
+  ctx.arc(cx, groundY - 18, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawApartment(ctx, cx, groundY, floors, config) {
+  const bw = 160, bh = 30 + floors * 28;
+  const rx = cx - bw/2, ry = groundY - bh;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  ctx.fillRect(rx + 15, groundY, bw, 10);
+
+  // Body
+  const g = ctx.createLinearGradient(rx, ry, rx + bw, ry);
+  g.addColorStop(0, '#e8e0d0');
+  g.addColorStop(1, '#d8d0c0');
+  ctx.fillStyle = g;
+  ctx.fillRect(rx, ry, bw, bh);
+  ctx.strokeStyle = '#b8b0a0';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rx, ry, bw, bh);
+
+  // Windows grid
+  const cols = 6, winW = 16, winH = 16;
+  const gapX = (bw - cols * winW) / (cols + 1);
+  const gapY = (bh / floors - winH) / 2;
+  for (let f = 0; f < floors; f++) {
+    for (let c = 0; c < cols; c++) {
+      const wx = rx + gapX + c * (winW + gapX);
+      const wy = ry + f * (bh / floors) + gapY;
+      ctx.fillStyle = Math.random() > 0.3 ? '#87CEEB' : '#FFFACD';
+      ctx.fillRect(wx, wy, winW, winH);
+      ctx.strokeStyle = '#aaa';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(wx, wy, winW, winH);
+    }
+  }
+
+  // Flat roof edge
+  ctx.fillStyle = '#a09888';
+  ctx.fillRect(rx - 3, ry - 5, bw + 6, 8);
+
+  // Entrance
+  ctx.fillStyle = '#8B4513';
+  ctx.fillRect(cx - 15, groundY - 30, 30, 30);
+  ctx.strokeStyle = '#654321';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(cx - 15, groundY - 30, 30, 30);
+
+  // Awning
+  ctx.fillStyle = '#c0392b';
+  ctx.beginPath();
+  ctx.moveTo(cx - 25, groundY - 30);
+  ctx.lineTo(cx, groundY - 42);
+  ctx.lineTo(cx + 25, groundY - 30);
+  ctx.fill();
+}
+
+function drawCottage(ctx, cx, groundY, config) {
+  const bw = 130, bh = 65;
+  const rx = cx - bw/2, ry = groundY - bh;
+
+  // Body - warm color
+  ctx.fillStyle = '#f5e6c8';
+  ctx.fillRect(rx, ry, bw, bh);
+  ctx.strokeStyle = '#c8a878';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rx, ry, bw, bh);
+
+  // Wood texture lines
+  ctx.strokeStyle = 'rgba(139,90,43,0.15)';
+  for (let i = 1; i < 6; i++) {
+    ctx.beginPath();
+    ctx.moveTo(rx, ry + i * bh/6);
+    ctx.lineTo(rx + bw, ry + i * bh/6);
+    ctx.stroke();
+  }
+
+  // Big roof
+  ctx.fillStyle = '#8B4513';
+  ctx.beginPath();
+  ctx.moveTo(rx - 25, ry);
+  ctx.quadraticCurveTo(cx, ry - 65, rx + bw + 25, ry);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#6B3410';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Thatch texture
+  ctx.strokeStyle = 'rgba(107,52,16,0.3)';
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    const t = (i + 1) / 9;
+    ctx.moveTo(rx - 25 + t * (bw + 50), ry);
+    ctx.lineTo(cx + (t - 0.5) * 20, ry - 50);
+    ctx.stroke();
+  }
+
+  // Round window (attic)
+  ctx.fillStyle = '#87CEEB';
+  ctx.beginPath();
+  ctx.arc(cx, ry - 25, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#8B4513';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx, ry - 37);
+  ctx.lineTo(cx, ry - 13);
+  ctx.moveTo(cx - 12, ry - 25);
+  ctx.lineTo(cx + 12, ry - 25);
+  ctx.stroke();
+
+  // Windows
+  const ww = 22, wh = 26;
+  ctx.fillStyle = '#87CEEB';
+  ctx.fillRect(rx + 15, ry + 18, ww, wh);
+  ctx.fillRect(rx + bw - 15 - ww, ry + 18, ww, wh);
+  ctx.strokeStyle = '#8B4513';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(rx + 15, ry + 18, ww, wh);
+  ctx.strokeRect(rx + bw - 15 - ww, ry + 18, ww, wh);
+  // Shutters
+  ctx.fillStyle = '#2c5f2d';
+  ctx.fillRect(rx + 8, ry + 18, 7, wh);
+  ctx.fillRect(rx + 15 + ww, ry + 18, 7, wh);
+  ctx.fillRect(rx + bw - 15 - ww - 7, ry + 18, 7, wh);
+  ctx.fillRect(rx + bw - 8, ry + 18, 7, wh);
+
+  // Door
+  ctx.fillStyle = '#8B4513';
+  ctx.fillRect(cx - 12, ry + 30, 24, bh - 30);
+  ctx.strokeStyle = '#654321';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(cx - 12, ry + 30, 24, bh - 30);
+
+  // Chimney
+  ctx.fillStyle = '#8B7355';
+  ctx.fillRect(rx + bw * 0.7, ry - 55, 14, 30);
+  ctx.fillStyle = '#6B5335';
+  ctx.fillRect(rx + bw * 0.7 - 2, ry - 55, 18, 5);
+
+  // Smoke
+  ctx.fillStyle = 'rgba(200,200,200,0.4)';
+  ctx.beginPath();
+  ctx.arc(rx + bw * 0.7 + 7, ry - 62, 6, 0, Math.PI * 2);
+  ctx.arc(rx + bw * 0.7 + 10, ry - 72, 5, 0, Math.PI * 2);
+  ctx.arc(rx + bw * 0.7 + 6, ry - 82, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawGarden(ctx, cx, groundY, W, H) {
+  // Trees
+  const trees = [[80, groundY + 15], [W - 80, groundY + 10], [cx - 160, groundY + 20], [cx + 170, groundY + 18]];
+  trees.forEach(([tx, ty]) => {
+    ctx.fillStyle = '#6B4226';
+    ctx.fillRect(tx - 4, ty - 20, 8, 25);
+    ctx.fillStyle = '#228B22';
+    ctx.beginPath();
+    ctx.arc(tx, ty - 30, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2E8B2E';
+    ctx.beginPath();
+    ctx.arc(tx + 5, ty - 35, 13, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Flowers
+  const flowers = [[cx - 130, groundY + 8], [cx + 140, groundY + 10], [120, groundY + 20], [W - 120, groundY + 15]];
+  flowers.forEach(([fx, fy]) => {
+    ['#FF6B6B', '#FFD93D', '#FF8C94', '#A8D8EA'].forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(fx + i * 10, fy + (i % 2) * 4, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  });
+
+  // Bushes
+  ctx.fillStyle = '#3CB371';
+  [[cx - 100, groundY + 5, 25], [cx + 100, groundY + 5, 22]].forEach(([bx, by, r]) => {
+    ctx.beginPath();
+    ctx.arc(bx, by, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2E9E5E';
+    ctx.beginPath();
+    ctx.arc(bx + 8, by - 3, r * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3CB371';
+  });
+}
+
+function drawPool(ctx, px, py) {
+  ctx.fillStyle = '#4FC3F7';
+  ctx.beginPath();
+  ctx.ellipse(px, py + 15, 45, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#29B6F6';
+  ctx.beginPath();
+  ctx.ellipse(px, py + 15, 38, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Water shine
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(px - 10, py + 10, 12, 5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawGarage(ctx, gx, gy, config) {
+  const gw = 55, gh = 40;
+  ctx.fillStyle = '#e8e0d0';
+  ctx.fillRect(gx, gy - gh, gw, gh);
+  ctx.strokeStyle = '#b8b0a0';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(gx, gy - gh, gw, gh);
+
+  // Garage door
+  ctx.fillStyle = '#a09888';
+  ctx.fillRect(gx + 8, gy - gh + 10, gw - 16, gh - 10);
+  ctx.strokeStyle = '#888';
+  ctx.strokeRect(gx + 8, gy - gh + 10, gw - 16, gh - 10);
+  // Lines on door
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(gx + 8, gy - gh + 10 + i * (gh - 10)/4);
+    ctx.lineTo(gx + gw - 8, gy - gh + 10 + i * (gh - 10)/4);
+    ctx.stroke();
+  }
+
+  // Roof
+  ctx.fillStyle = '#8B4513';
+  ctx.beginPath();
+  ctx.moveTo(gx - 8, gy - gh);
+  ctx.lineTo(gx + gw/2, gy - gh - 20);
+  ctx.lineTo(gx + gw + 8, gy - gh);
+  ctx.fill();
+}
+
+function drawSolar(ctx, cx, groundY, floors) {
+  const sy = groundY - (50 + (floors - 1) * 30) - 42;
+  const sx = cx + 20;
+  ctx.fillStyle = '#2c3e50';
+  ctx.fillRect(sx - 25, sy, 50, 20);
+  ctx.fillStyle = '#34495e';
+  for (let r = 0; r < 2; r++) {
+    for (let c = 0; c < 5; c++) {
+      ctx.fillRect(sx - 23 + c * 10, sy + 2 + r * 9, 8, 7);
+    }
+  }
+  // Shine
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.fillRect(sx - 20, sy + 3, 3, 5);
+}
+
+// ===== Calculation =====
+function calculate() {
+  const type = document.getElementById('houseType').value;
+  const loc = document.getElementById('location').value;
+  const mat = document.getElementById('material').value;
+  const area = parseInt(document.getElementById('area').value);
+  const floors = parseInt(document.getElementById('floors').value);
+  const features = getSelected('feature');
+
+  const house = HOUSE_TYPES[type];
+  const location = LOCATIONS[loc];
+  const material = MATERIALS[mat];
+
+  // Base construction cost
+  const baseCost = house.base * area * location.mult * material.mult;
+
+  // Cost breakdown
+  const breakdown = {
+    foundation:  baseCost * 0.12,
+    structure:   baseCost * 0.22,
+    roof:        baseCost * 0.10,
+    exterior:    baseCost * 0.10,
+    interior:    baseCost * 0.15,
+    electrical:  baseCost * 0.12,
+    doors:       baseCost * 0.06,
+    design:      baseCost * 0.08,
+    land:        location.land * area * 0.6,
+    feature:     0
+  };
+
+  // Features cost
+  let featureTotal = 0;
+  const featureDetails = [];
+  features.forEach(f => {
+    const feat = FEATURES[f];
+    const cost = feat.price * (f === 'basement' ? floors : 1);
+    featureTotal += cost;
+    featureDetails.push({ name: feat.name, cost });
+  });
+  breakdown.feature = featureTotal;
+
+  const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
+
+  // Show results
+  const resultSection = document.getElementById('resultSection');
+  resultSection.classList.add('show');
+
+  // Update total
+  document.getElementById('totalBudget').textContent = fmtY(Math.round(total));
+  document.getElementById('budgetSub').textContent =
+    `${house.name} · ${area}m² · ${floors}层 · ${location.name} · ${material.name}`;
+  document.getElementById('pieTotal').textContent = fmtY(Math.round(total));
+
+  // Design label
+  const ftNames = features.map(f => FEATURES[f].name).join(' / ');
+  document.getElementById('designLabel').textContent =
+    `${house.name} · ${floors}层${ftNames ? ' · ' + ftNames : ''}`;
+
+  // Draw result house
+  drawHouse(document.getElementById('resultCanvas'), {
+    type, floors,
+    hasGarden: features.includes('garden'),
+    hasPool: features.includes('pool'),
+    hasGarage: features.includes('garage'),
+    hasSolar: features.includes('solar'),
+    hasFireplace: features.includes('fireplace')
+  });
+
+  // Breakdown list
+  const bdDiv = document.getElementById('breakdown');
+  bdDiv.innerHTML = '';
+  const sortedEntries = Object.entries(breakdown)
+    .filter(([k, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  sortedEntries.forEach(([key, val]) => {
+    const c = COLORS[key];
+    const pct = ((val / total) * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'bd-row';
+    row.innerHTML = `
+      <div class="bd-color" style="background:${c.color}"></div>
+      <div class="bd-name">${c.name}</div>
+      <div class="bd-pct">${pct}%</div>
+      <div class="bd-val">${fmtY(Math.round(val))}</div>
+    `;
+    bdDiv.appendChild(row);
+  });
+
+  // Pie chart
+  drawPie(document.getElementById('pieCanvas'), sortedEntries, total);
+
+  // Detail list
+  const detailDiv = document.getElementById('detailList');
+  let detailHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.88em;">';
+  detailHTML += '<tr style="background:#f5f0e8;"><th style="padding:10px;text-align:left;border-bottom:2px solid #ddd;">项目</th><th style="padding:10px;text-align:right;border-bottom:2px solid #ddd;">金额</th><th style="padding:10px;text-align:right;border-bottom:2px solid #ddd;">占比</th></tr>';
+
+  // Group: Construction
+  detailHTML += '<tr><td colspan="3" style="padding:12px 10px 6px;font-weight:700;color:var(--primary);">🏗️ 建造费用</td></tr>';
+  const buildItems = [
+    { name: '地基基础工程', val: breakdown.foundation },
+    { name: '主体结构工程', val: breakdown.structure },
+    { name: '屋顶工程', val: breakdown.roof },
+    { name: '外墙装饰工程', val: breakdown.exterior },
+    { name: '室内装修工程', val: breakdown.interior },
+    { name: '水电暖通工程', val: breakdown.electrical },
+    { name: '门窗工程', val: breakdown.doors }
+  ];
+  buildItems.forEach(item => {
+    detailHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">${item.name}</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;">${fmtY(Math.round(item.val))}</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;">${((item.val/total)*100).toFixed(1)}%</td></tr>`;
+  });
+
+  // Group: Other
+  detailHTML += '<tr><td colspan="3" style="padding:12px 10px 6px;font-weight:700;color:var(--primary);">📋 其他费用</td></tr>';
+  detailHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">土地费用</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;">${fmtY(Math.round(breakdown.land))}</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;">${((breakdown.land/total)*100).toFixed(1)}%</td></tr>`;
+  detailHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">设计/管理费</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;">${fmtY(Math.round(breakdown.design))}</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;">${((breakdown.design/total)*100).toFixed(1)}%</td></tr>`;
+
+  // Group: Features
+  if (featureDetails.length > 0) {
+    detailHTML += '<tr><td colspan="3" style="padding:12px 10px 6px;font-weight:700;color:var(--primary);">✨ 附加配置</td></tr>';
+    featureDetails.forEach(f => {
+      detailHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">${f.name}</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;">${fmtY(Math.round(f.cost))}</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;">${((f.cost/total)*100).toFixed(1)}%</td></tr>`;
+    });
+  }
+
+  // Emergency fund
+  const emergency = total * 0.15;
+  detailHTML += '<tr><td colspan="3" style="padding:12px 10px 6px;font-weight:700;color:#c0392b;">⚠️ 建议预留</td></tr>';
+  detailHTML += `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;">应急资金 (15%)</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;color:#c0392b;font-weight:600;">${fmtY(Math.round(emergency))}</td><td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee;">-</td></tr>`;
+
+  // Grand total
+  detailHTML += `<tr style="background:#f0f7f0;"><td style="padding:12px 10px;font-weight:700;font-size:1.05em;">含应急资金总计</td><td style="padding:12px 10px;text-align:right;font-weight:700;font-size:1.05em;color:var(--primary);">${fmtY(Math.round(total + emergency))}</td><td></td></tr>`;
+
+  detailHTML += '</table>';
+  detailDiv.innerHTML = detailHTML;
+
+  showToast('✅ 预算计算完成！');
+
+  // Scroll to results
+  resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function drawPie(canvas, entries, total) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2, r = 85;
+  ctx.clearRect(0, 0, W, H);
+
+  let startAngle = -Math.PI / 2;
+  entries.forEach(([key, val]) => {
+    const slice = (val / total) * Math.PI * 2;
+    ctx.fillStyle = COLORS[key].color;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, startAngle + slice);
+    ctx.closePath();
+    ctx.fill();
+
+    // White border
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    startAngle += slice;
+  });
+
+  // Center hole (donut)
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 42, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// ===== Init: live preview =====
+function updatePreview() {
+  const type = document.getElementById('houseType').value;
+  const floors = parseInt(document.getElementById('floors').value);
+  const features = getSelected('feature');
+  drawHouse(document.getElementById('houseCanvas'), {
+    type, floors,
+    hasGarden: features.includes('garden'),
+    hasPool: features.includes('pool'),
+    hasGarage: features.includes('garage'),
+    hasSolar: features.includes('solar'),
+    hasFireplace: features.includes('fireplace')
+  });
+}
+
+// Live update
+document.getElementById('houseType').addEventListener('change', updatePreview);
+document.getElementById('floors').addEventListener('input', () => {
+  document.getElementById('floorVal').textContent = document.getElementById('floors').value + ' 层';
+  updatePreview();
+});
+document.getElementById('area').addEventListener('input', () => {
+  document.getElementById('areaVal').textContent = document.getElementById('area').value + ' m²';
+});
+document.querySelectorAll('input[name="feature"]').forEach(cb => {
+  cb.addEventListener('change', updatePreview);
+});
+
+// Initial draw
+updatePreview();
+</script>
+</body>
+</html>
