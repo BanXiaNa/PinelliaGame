@@ -1,8 +1,0 @@
-{
-  "name": "游戏名称",
-  "description": "简短的游戏描述，会显示在游戏卡片上",
-  "icon": "🎮",
-  "color": "#7c5cff",
-  "path": "games/example-game",
-  "tags": ["示例", "模板"]
-}
