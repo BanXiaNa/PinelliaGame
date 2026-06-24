@@ -142,7 +142,10 @@ function renderGames(games) {
     el.grid.appendChild(card);
   });
 
-  // 显示网格
+  // 切换状态：隐藏 loading，显示网格
+  el.loading.classList.add('hidden');
+  el.error.classList.add('hidden');
+  el.empty.classList.add('hidden');
   el.grid.classList.remove('hidden');
 }
 
